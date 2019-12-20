@@ -26,28 +26,36 @@
 #
 # LIST OF CHECKS:
 #  1) Check if user name and email are set and reasonable
-#  2) Check branch on which the commit is being done
-#  3) Prevent non-ASCII characters in filenames
-#  4) Make whitespace git check
-#  5) Go through fully staged files and
+#  2) Prevent non-ASCII, spaces and endline characters in filenames
+#  3) Optionally, go through staged files and
+#      - check code style using clang-format
+#      - check copyright statement
+#      - check license notice
+#  4) Optionally, go through fully staged files and
 #      - remove trailing spaces at end of lines
 #      - add end of line at the end of file
 #      - remove empty lines at the end of the file
-#  6) Go through staged files and
-#      - check copyright statement
-#      - check license notice
-#      - check code style using clang-format
+#  5) Optionally, make whitespace git check
+#  6) Optionally, check branch on which the commit is being done
 #
 # Called by "git commit" with no arguments. The hook should exit
 # with non-zero status after issuing an appropriate message if
 # it wants to stop the commit.
+#
+#-----------------------------------------------------------------------
+# NOTE: Some global variables defined here are used in function
+#       and therefore do not be misled and tempted to remove them
+#       if their name appears only on their definition line!
+#
 
 #Preliminary setup and source of bash functions
 printf "\n"; trap 'printf "\n"' EXIT
-readonly hooksFolder="$(dirname "$(readlink -f "${BASH_SOURCE[0]")")"
-for auxFile in "${hooksFolder}/BashImplementation/"*.bash; do
-    source "${auxFile}" || exit 1
-done
+readonly repositoryTopLevelPath="$(git rev-parse --show-toplevel)"
+readonly auxiliaryBashCodeTopLevelPath="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+readonly hookImplementationFolderName='BashImplementation'
+source "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/auxiliaryFunctions.bash"
+# Global variable for this hook are sourced in the file just sourced!
+
 
 #Check for committer identity as such and check if it exists in history
 userName=''; userEmail=''; committerName=''; committerEmail=''
@@ -92,49 +100,83 @@ if DoAddedFilenamesContainEndlines; then
 fi
 # NOTE: From this point on assume no spaces and no newlines in filenames!
 
-# Get list of staged files which have to be checked with respect to CODE STYLE
-readonly listOfStagedFiles=( $(GetListOfStagedFiles) )
-readonly clangFormatParameters="-style=file"
-if IsClangFormatNotAvailable; then
-    AbortCommit "The program \"clang-format\" was not found!" GiveAdviceAboutClangFormat
-fi
-filesWithCodeStyleErrors=(); fileExtensionsForCodeStyleCheck=( 'c' 'cpp' 'h' 'hpp' 'cl' )
-if DoesCodeStyleCheckFailOnAnyStagedFileEndingWith "${fileExtensionsForCodeStyleCheck[@]}"; then
-    AbortCommit "Code style error found!" PrintReportOnFilesWithStyleErrors "${filesWithCodeStyleErrors[@]}"
+
+if [[ ${doCodeStyleCheckWithClangFormat} = 'TRUE' ]]; then
+    # Get list of staged files which have to be checked with respect to CODE STYLE
+    readonly listOfStagedFiles=( $(GetListOfStagedFiles) )
+    readonly clangFormatParameters="-style=file"
+    if IsClangFormatNotAvailable; then
+        AbortCommit "The program \"clang-format\" was not found!" GiveAdviceAboutClangFormat
+    fi
+    if IsClangFormatStyleFileNotAvailable; then
+        AbortCommit "The style file \"_clang-format\" was not found at the top-level of the repository!" GiveAdviceAboutClangFormatStyleFile
+    fi
+    filesWithCodeStyleErrors=(); fileExtensionsForCodeStyleCheck=( "${extensionsOfFilesWhoseCodeStyleShouldBeCheckedWithClangFormat[@]}" )
+    if DoesCodeStyleCheckFailOnAnyStagedFileEndingWith "${fileExtensionsForCodeStyleCheck[@]}"; then
+        AbortCommit "Code style error found!" PrintReportOnFilesWithStyleErrors "${filesWithCodeStyleErrors[@]}"
+    fi
 fi
 
-# Work on tab/spaces in files (only those fully stages, since after modification we have to
-# add them and if done on partially staged they would be then fully staged against user willing!
-readonly fullyStagedFiles=( $(GetListOfFullyStagedFiles) )
-FixWhitespaceOnFullyStagedFilesIfNeeded
 
-# Check header in staged files
-readonly licenceNoticeFile="${hooksFolder}/LicenseNotice.txt"
-if [[ ! -f "${licenceNoticeFile}" ]]; then
-    PrintError "File \"${licenceNoticeFile}\" not found!"
-    AbortCommit "Unable to locate the license notice file!"
-else
-    fileExtensionsForLicenseAndCopyrightCheck=( 'bash' 'c' 'C' 'cl' 'cmake' 'cpp' 'h' 'hpp' 'm' 'nb' 'py' 'sh' 'tex' 'txt' )
-    if DoesLicenseAndCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
-        AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the header of the files?"
-        if UserSaidNo; then
-            AbortCommit "Files with wrong or missing header found!" PrintSuggestionToFixHeader
+if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
+    readonly licenseNoticeFile="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
+    if [[ ! -f "${licenseNoticeFile}" ]]; then
+        PrintError "File \"${licenseNoticeFile}\" not found!"
+        AbortCommit "Unable to locate the license notice file!"
+    else
+        fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
+        filesWithWrongOrMissingLicenseNotice=()
+        PrintInfo '\nChecking license notice of staged files... \e[s'
+        if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
+            PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
+            AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the license notice of the file(s)?"
+            if UserSaidNo; then
+                AbortCommit "Files with wrong or missing license notice found!" PrintSuggestionToFixHeader
+            fi
+        else
+            PrintInfo -l -- "\e[udone!\n"
         fi
     fi
 fi
 
-#If there are still whitespace errors, print the offending file names and fail
-if AreThereFilesWithWhitespaceErrors; then
-    AbortCommit "Whitespace errors present in staged files!" GiveAdviceAboutWhitespaceError
+
+if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
+    fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
+    filesWithIncompleteCopyright=()
+    if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
+        PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
+        AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the copyright statement of the file(s)?"
+        if UserSaidNo; then
+            AbortCommit "Files with wrong or missing copyright statement found!" PrintSuggestionToFixHeader
+        fi
+    else
+        PrintInfo -l -- "\e[udone!\n"
+    fi
 fi
+
+
+if [[ ${doWhitespaceFixAndCheck} = 'TRUE' ]]; then
+    # Work on tab/spaces in files (only those fully stages, since after modification we have to
+    # add them and if done on partially staged they would be then fully staged against user willing!
+    readonly fullyStagedFiles=( $(GetListOfFullyStagedFiles) )
+    FixWhitespaceOnFullyStagedFilesIfNeeded
+    #If there are still whitespace errors, print the offending file names and fail
+    if AreThereFilesWithWhitespaceErrors; then
+        AbortCommit "Whitespace errors present in staged files!" GiveAdviceAboutWhitespaceError
+    fi
+fi
+
 
 #Check branch: direct commit on 'develop' should not be done
 readonly actualBranch="$(git rev-parse --abbrev-ref HEAD)"
 listOfBranchNamesWhereDirectCommitsAreForbidden=( 'master' 'develop' )
 if IsActualBranchAnyOfTheFollowing "${listOfBranchNamesWhereDirectCommitsAreForbidden[@]}"; then
-    #PrintWarning \
-    #    "You just made a commit on the \"${actualBranch}\" branch." \
-    #    "This is considered bad practice." \
-    #    "Please undo it if it was not intended!"
-    AbortCommit "To directly commit on \"${actualBranch}\" branch is forbidden!" GiveAdviceToResumeCommit
+    if [[ ${restrictCommitsOnSomeBranches} = 'TRUE' ]]; then
+        AbortCommit "To directly commit on \"${actualBranch}\" branch is forbidden!" GiveAdviceToResumeCommit
+    else
+        PrintWarning \
+            "You just made a commit on the \"${actualBranch}\" branch." \
+            "This is considered bad practice." \
+            "Please undo it if it was not intended!"
+    fi
 fi

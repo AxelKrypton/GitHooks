@@ -184,6 +184,17 @@ function IsClangFormatNotAvailable()
     fi
 }
 
+function IsClangFormatStyleFileNotAvailable()
+{
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet repositoryTopLevelPath
+    if [[ -f "${repositoryTopLevelPath}/_clang-format" ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
 {
     CheckIfVariablesAreSet listOfStagedFiles
@@ -273,43 +284,48 @@ function FixWhitespaceOnFullyStagedFilesIfNeeded()
     fi
 }
 
-function DoesLicenseAndCopyrightStatementCheckFailOfStagedFilesEndingWith()
+function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
 {
-    CheckIfVariablesAreSet listOfStagedFiles userName licenceNoticeFile
-    local extensionRegex numberOfExpectedTextLines expectedCopyright filesWithWrongOrMissingHeader filesWithMissingCopyright file
+    CheckIfVariablesAreSet listOfStagedFiles userName licenseNoticeFile
+    local extensionRegex numberOfExpectedTextLines file returnCode
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
-    numberOfExpectedTextLines=$(sed '/^$/d' "${licenceNoticeFile}" | wc -l)
-    expectedCopyright='Copyright \(c\) ([2][0-9]{3}[,-]?[ ]?)*'"$(date +%Y) ${userName}"
-    filesWithWrongOrMissingHeader=()
-    filesWithMissingCopyright=()
-    PrintInfo '\nChecking header of staged files... \e[s'
+    numberOfExpectedTextLines=$(sed '/^$/d' "${licenseNoticeFile}" | wc -l)
+    returnCode=0
     for file in "${stagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
             continue
         fi
         # Note that here the "| sort | uniq" avoids counting multiple times lines of the
-        # licenceNoticeFile which could be by accident repeated in third party code
-        numberOfMatchingLines=$(grep -o -f "${licenceNoticeFile}" "${file}" | sort | uniq | wc -l)
+        # licenseNoticeFile which could be by accident repeated in third party code
+        numberOfMatchingLines=$(grep -o -f "${licenseNoticeFile}" "${file}" | sort | uniq | wc -l)
         if [[ ${numberOfMatchingLines} -ne ${numberOfExpectedTextLines} ]]; then
-            filesWithWrongOrMissingHeader+=( "${file}" )
-        fi
-        if [[ $(grep -cE "${expectedCopyright}" "${file}") -eq 0 ]]; then
-            filesWithMissingCopyright+=( "${file}" )
+            filesWithWrongOrMissingLicenseNotice+=( "${file}" )
+            returnCode=1
         fi
     done
-    if [ ${#filesWithMissingCopyright[@]} -ne 0 ] || [ ${#filesWithWrongOrMissingHeader[@]} -ne 0 ]; then
-        if [ ${#filesWithWrongOrMissingHeader[@]} -ne 0 ]; then
-            PrintReportOnFilesWithWrongOrMissingHeader "${filesWithWrongOrMissingHeader[@]}"
+    return ${returnCode}
+}
+
+function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
+{
+    CheckIfVariablesAreSet listOfStagedFiles userName licenseNoticeFile
+    local extensionRegex expectedCopyright file returnCode
+    extensionRegex="$(printf "%s|" "$@")"
+    extensionRegex="[.](${extensionRegex%?})\$"
+    expectedCopyright='Copyright \(c\) ([2][0-9]{3}[,-]?[ ]?)*'"$(date +%Y) ${userName}"
+    returnCode=0
+    PrintInfo '\nChecking copyright statement of staged files... \e[s'
+    for file in "${stagedFiles[@]}"; do
+        if [[ ! ${file} =~ ${extensionRegex} ]]; then
+            continue
         fi
-        if [ ${#filesWithMissingCopyright[@]} -ne 0 ]; then
-            PrintReportOnFilesWithMissingCopyright "${filesWithMissingCopyright[@]}"
+        if [[ $(grep -cE "${expectedCopyright}" "${file}") -eq 0 ]]; then
+            filesWithIncompleteCopyright+=( "${file}" )
+            returnCode=1
         fi
-        return 0
-    else
-        PrintInfo -l -- "\e[udone!\n"
-        return 1
-    fi
+    done
+    return ${returnCode}
 }
 
 function AreThereFilesWithWhitespaceErrors()
@@ -419,10 +435,30 @@ function GiveAdviceAboutClangFormat()
         'location can be automatically found (e.g. setting the PATH variable).\n'
 }
 
-function PrintReportOnFilesWithWrongOrMissingHeader()
+function GiveAdviceAboutClangFormatStyleFile()
 {
     CheckNumberOfArguments 0 $#
-    PrintError '\nHere a list of files with wrong or missing license header:'
+    PrintInfo \
+        'The style file for clang-format should be automatically set up' \
+        'together with the hooks, if needed. Apparently something went' \
+        'wrong or you might have by accident moved/renamed/deleted it.' \
+        'Try to run the hooks setup again and, if this error persists,' \
+        'feel free to contact the GitHooks developers.\n'
+}
+
+function GiveAdviceAboutMissingLicenseNotice()
+{
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet licenseNoticeFile
+    PrintInfo \
+        'A file with the expected license notice should be available as' \
+        "   ${licenseNoticeFile}" \
+        'Please, add one in order to use the automatic hook check.\n'
+}
+
+function PrintReportOnFilesWithWrongOrMissingLicenseNotice()
+{
+    PrintError '\nHere a list of files with wrong or missing license notice:'
     local file
     for file in "$@"; do
         PrintError -l -- "     - ${file}"
@@ -432,7 +468,6 @@ function PrintReportOnFilesWithWrongOrMissingHeader()
 
 function PrintReportOnFilesWithMissingCopyright()
 {
-    CheckNumberOfArguments 0 $#
     PrintError '\nHere a list of modified files with present year and author missing in the copyright statement in the header:'
     local file
     for file in "$@"; do
@@ -444,10 +479,10 @@ function PrintReportOnFilesWithMissingCopyright()
 function PrintSuggestionToFixHeader()
 {
     CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet licenceNoticeFile
+    CheckIfVariablesAreSet licenseNoticeFile
     PrintInfo \
         'The correct license header can be found in the' \
-        "   \e[1m${licenceNoticeFile}\e[22m" \
+        "   \e[1m${licenseNoticeFile}\e[22m" \
         'file. If only the copyright statement is missing add' \
         "   \e[1mCopyright (c) [past-years]$(date +%Y) ${userName}\e[22m" \
         'in the header before the license part. The [past-years] part may contain other years and' \

@@ -16,6 +16,30 @@
 #  You should have received a copy of the GNU General Public License
 #  along with GitHooks. If not, see <https://www.gnu.org/licenses/>.
 #
+#-----------------------------------------------------------------------
+# When this file is sourced, auxiliary files are also sourced,
+# nothing is done if this file is for some reason executed.
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    # Here we cannot use functions in this file that rely on code in other files
+    fileThatSourced="$(basename "${BASH_SOURCE[1]}")" # Assume this is true
+    filesToBeSourced=(
+        "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/Logger.bash"
+        "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/${fileThatSourced/.bash/_auxiliary.bash}"
+    )
+    if [[ "${fileThatSourced}" != 'hooksSetup.bash' ]]; then
+        filesToBeSourced+=( "${auxiliaryBashCodeTopLevelPath}/hooksGlobalVariables.bash" )
+    fi
+    for auxFile in "${filesToBeSourced[@]}"; do
+        source "${auxFile}"
+        if [[ $? -ne 0 ]]; then
+            printf "\e[91m FATAL: Unable to source \"${auxFile}\".\e[0m\n"
+            exit 1
+        fi
+    done
+    unset -v 'fileThatSourced' 'filesToBeSourced' 'auxFile'
+fi
+#-----------------------------------------------------------------------
+
 function AbortCommit() {
     PrintError "$1"; shift
     if [[ $# -gt 0 ]]; then

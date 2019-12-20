@@ -27,6 +27,50 @@ function ParseCommandLineOptions()
                 symlinkFilesToRepository='TRUE'
                 shift
                 ;;
+            -F | --force )
+                forceCopyOrSymlink='TRUE'
+                shift
+                ;;
+            --setupCodeStyleCheck )
+                setupCodeStyleCheck='TRUE'
+                shift
+                ;;
+            -l | --language )
+                repositoryLanguage="$2"
+                shift 2
+                ;;
+            --clangFile )
+                if [[ ! -f "$2" ]]; then
+                    __static__AbortDueToInvalidOrMissingOptionValue "1" "File not found!"
+                else
+                    clangFormatStyleFile="$2"
+                fi
+                shift 2
+                ;;
+            --setupLicenseNoticeCheck )
+                setupLicenseNoticeCheck='TRUE'
+                shift
+                ;;
+            --noticeFile )
+                if [[ ! -f "$2" ]]; then
+                    __static__AbortDueToInvalidOrMissingOptionValue "1" "File not found!"
+                else
+                    licenseNoticeFile="$2"
+                fi
+                shift 2
+                ;;
+            --activateCopyrightCheck )
+                activateCopyrightCheck='TRUE'
+                shift
+                ;;
+            --activateSpacesFixAndCheck )
+                activateWhitespaceFixAndCheck='TRUE'
+                shift
+                ;;
+            --activateCommitRestrictions )
+                activateCommitRestrictions='TRUE'
+                shift
+                ;;
             * )
                 PrintFatalAndExit "Unrecognised option \"${1}\"."
                 exit 1
@@ -45,14 +89,26 @@ function __static__PrintHelperAndExitIfNeeded()
         if [[ ${option} =~ ^-(h|-help)$ ]]; then
             PrintInfo \
                 'Available options to the script:\n' \
-                '\e[38;5;14m  -g | --git       \e[0m  ->  Git repository top-level for which hooks should be set up   \e[94m[MANDATORY]' \
-                '\e[38;5;11m  -c | --copy      \e[0m  ->  Copy files to given git repository' \
-                '\e[38;5;11m  -s | --symlink   \e[0m  ->  Create symlinks to local files in given git repository' \
-#                "\e[38;5;14m  -l | --lattice        \e[0m  ->  Lattice size (4 integers)           \e[94m[default: ${latticeSize[*]}]" \
-#                '\e[38;5;14m  -p | --processors     \e[0m  ->  Processors grid (4 integers)        \e[94m[default: chosen from list]' \
-#                '\e[38;5;14m       --doNotSubmitJob \e[0m  ->  Prepare all files but do not submit \e[94m[default: FALSE]' \
-#                '\e[38;5;11m  -s | --status         \e[0m  ->  Report on benchmarks status' \
-#                '\n     \e[34mNOTE: The value(s) of the \e[38;5;246mgray options\e[34m are not always used!' \
+                '\e[38;5;33m  -g | --git                  \e[0m  ->  Git repository top-level for which hooks should be set up   \e[94m[MANDATORY]' \
+                '\e[38;5;11m  -c | --copy                 \e[0m  ->  Copy files to given git repository \e[94m[recomended for multi-repository usage]' \
+                '\e[38;5;11m  -s | --symlink              \e[0m  ->  Create symlinks to local files in given git repository' \
+                '\e[38;5;14m  -F | --force                \e[0m  ->  Overwrite previous file(s) or symlink(s) in repository' \
+                '' \
+                '\e[38;5;246m  --setupCodeStyleCheck       \e[0m  ->  At the moment only for "c" or "cpp" language' \
+                '\e[38;5;14m  -l | --language             \e[0m  ->  Repository programming language' \
+                '\e[38;5;14m       --clangFile            \e[0m  ->  Style file for clang-format, if not specified use local one' \
+                '' \
+                '\e[38;5;246m  --setupLicenseNoticeCheck   \e[0m  ->  pre-commit hook will check license notice' \
+                '\e[38;5;14m       --noticeFile           \e[0m  ->  License notice file for header check' \
+                "\e[38;5;14m       --extensionsLicense    \e[0m  ->  Extensions of files to be checked about license notice      \e[94m[default: ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}]" \
+                '' \
+                '\e[38;5;246m  --activateCopyrightCheck    \e[0m  ->  pre-commit hook will check copyright statement' \
+                "\e[38;5;14m       --extensionsCopyright  \e[0m  ->  Extensions of files to be checked about copyright statement \e[94m[default: ${extensionsOfFilesWhoseCopyrightShouldBeChecked}]" \
+                '' \
+                '\e[38;5;246m  --activateSpacesFixAndCheck \e[0m  ->  pre-commit hook will fix and check whitespaces in fully staged files' \
+                '' \
+                '\e[38;5;246m  --activateCommitRestrictions\e[0m  ->  pre-commit hook will forbit commits on "master" and "develop" branches' \
+                '\n     \e[34mNOTE: \e[38;5;246mGray options\e[34m should be used in combination with \e[38;5;14mfollowing cyan ones\e[34m!' \
                 'Options in \e[38;5;11myellow\e[34m are mutually exclusive but at least one must be given!\n'
             exit 0
         fi
@@ -109,21 +165,58 @@ function ValidateCommandLineOptions()
             fi
         fi
     fi    
+    if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" = '' ]]; then
+        PrintFatalAndExit "You asked to set up code style check but no language was specified."
+    fi
+    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+        if [[ "${licenseNoticeFile}" = '' ]]; then
+            PrintFatalAndExit "You asked to set up license notice check but no notice file was specified."
+        fi
+    fi
+    PrintTrace "Exiting ${FUNCNAME}"
+}
+
+function CreateFileWithVariablesToSupportHooksExecution()
+{
+    PrintTrace "Entering ${FUNCNAME}"
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet fileWithVariablesToSupportHooksExecution
+    # fd 3 and 4 are used by BashLogger in its v0.1 -> use here fd 5
+    exec 5>&1 1>"${fileWithVariablesToSupportHooksExecution}"
+    printf "readonly doCodeStyleCheckWithClangFormat='${setupCodeStyleCheck}'\n"
+    if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
+        printf "readonly extensionsOfFilesWhoseCodeStyleShouldBeCheckedWithClangFormat=( 'c' 'C' 'cpp' 'h' 'hpp' 'cl' )\n"
+    fi
+    printf "readonly doLicenseNoticeCheck='${setupLicenseNoticeCheck}'\n"
+    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+        printf "readonly extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( '${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}' )\n"
+    fi
+    printf "readonly doCopyrightStatementCheck='${activateCopyrightCheck}'\n"
+    if [[ ${activateCopyrightCheck} = 'TRUE' ]]; then
+        printf "readonly extensionsOfFilesWhoseCopyrightShouldBeChecked=( '${extensionsOfFilesWhoseCopyrightShouldBeChecked}' )\n"
+    fi
+    printf "readonly doWhitespaceFixAndCheck='${activateWhitespaceFixAndCheck}'\n"
+    printf "readonly restrictCommitsOnSomeBranches='${activateCommitRestrictions}'\n"
+    exec 1>&5-
+    PrintInfo "File \"${fileWithVariablesToSupportHooksExecution}\" successfully created!"
     PrintTrace "Exiting ${FUNCNAME}"
 }
 
 function CheckClangFormatAvailability()
 {
+    PrintTrace "Entering ${FUNCNAME}"
     CheckNumberOfArguments 0 $#
     if builtin type -P clang-format >/dev/null; then
-        PrintInfo 'The program "clang-format" was successfully found.\n'
+        PrintInfo 'The program "clang-format" was successfully found.'
     else
-        PrintWarning 'The program "clang-format" was not found but it is needed by the pre-commit hook.\n'
+        PrintWarning 'The program "clang-format" was not found but it is needed by the pre-commit hook.'
     fi
+    PrintTrace "Exiting ${FUNCNAME}"
 }
 
 function SetupHooksForGivenRepository()
 {
+    PrintTrace "Entering ${FUNCNAME}"
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet hookGitFolder thisRepositoryTopLevelPath hookImplementationFolderName
     local hookBash hookGit errorOccurred
@@ -137,66 +230,25 @@ function SetupHooksForGivenRepository()
         #We have to skip the main script file which is that sourcing this script => BASH_SOURCE[1]
         if [[ "$(basename ${hookBash})" != "$(basename "${BASH_SOURCE[1]}")" ]]; then
             hookGit="${hookGitFolder}/$(basename "${hookBash%.bash}")"
-            if [[ -e "${hookGit}" ]]; then
-                if [[ -L "${hookGit}" && "$(realpath ${hookGit})" = "${hookBash}" ]]; then
-                    if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
-                        PrintWarning \
-                            "Hook \"${hookGit}\" already correctly symlinked!" \
-                            "Remove the symlink and run the script again if you want to copy the file!"
-                    elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-                        PrintInfo "Hook \"${hookGit}\" already correctly symlinked!"
-                    fi
-                else
-                    if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
-                        PrintWarning "Hook \"${hookGit}\" already existing, copy skipped!"
-                    elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-                        PrintWarning "Hook \"${hookGit}\" already existing, symlink not created!"
-                    fi
-                fi
-                continue
-            else
-                if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
-                    if [[ ! -d "${hookGitFolder}/${hookImplementationFolderName}" && ${copyFilesToRepository} = 'TRUE' ]]; then
-                        PrintDebug "Copying implementation: \e[1mcp -r \"${thisRepositoryTopLevelPath}/${hookImplementationFolderName}\" \"${hookGitFolder}/.\"\e[22m"
-                        cp -r "${thisRepositoryTopLevelPath}/${hookImplementationFolderName}" "${hookGitFolder}/."
-                        if [[ $? -eq 0 ]]; then
-                            PrintInfo "Implementation copy completed. Folder \"${hookGitFolder}/${hookImplementationFolderName}\" successfully created!"
-                        else
-                            PrintError "Unable to copy \"${thisRepositoryTopLevelPath}/${hookImplementationFolderName}\" folder to \"${hookGitFolder}/\""
-                            (( errorOccurred++ ))
-                        fi
-                    fi
-                    PrintDebug "Copying hook \"$(basename "${hookGit}")\": \e[1mcp \"${hookBash}\" \"${hookGit}\"\e[22m"
-                    cp "${hookBash}" "${hookGit}"
-                    if [[ -f "${hookGit}" ]]; then
-                        PrintInfo "Hook \"$(basename "${hookGit}")\" copy completed. File \"${hookGit}\" successfully created!"
-                    else
-                        PrintError "Hook \"$(basename "${hookGit}")\" copy failed. Unable to create \"${hookGit}\" hook!"
-                        (( errorOccurred++ ))
-                    fi
-                elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-                    PrintDebug "Symlinking hook \"$(basename "${hookGit}")\": \e[1mln -s -f \"${hookBash}\" \"${hookGit}\"\e[22m"
-                    ln -s -f "${hookBash}" "${hookGit}"
-                    if [[ -e "${hookGit}" ]]; then
-                        PrintInfo "Symbolic link for \"${hookGit}\" hook successfully created!"
-                    else
-                        PrintError "Unable to create symbolic link for \"${hookGit}\" hook!"
-                        (( errorOccurred++ ))
-                    fi
-                fi
+            __static__SetupFileOrFolderCopyOrSymlink "${hookBash}" "${hookGit}"
+            if [[ $? -ne 0 ]]; then
+                (( errorOccurred++ ))
             fi
         fi
     done
-    if [[ ${errorOccurred} -eq 0 ]]; then
-        PrintInfo -l -- ''
-    else
-        PrintFatalAndExit "${errorOccurred} errors occurred! Setup aborted."
+    __static__SetupFileOrFolderCopyOrSymlink "${thisRepositoryTopLevelPath}/${hookImplementationFolderName}" "${hookGitFolder}/${hookImplementationFolderName}"
+    if [[ $? -ne 0 ]]; then
+        (( errorOccurred++ ))
     fi
+    if [[ ${errorOccurred} -ne 0 ]]; then
+        PrintFatalAndExit "${errorOccurred} errors occurred setting up git hooks! Setup aborted."
+    fi
+    PrintTrace "Exiting ${FUNCNAME}"
 }
-
 
 function SetupClangFormatStyleForGivenRepository()
 {
+    PrintTrace "Entering ${FUNCNAME}"
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet repositoryTopLevelPath clangFormatStyleFile
     local clangFormatStyleFileDestination
@@ -207,44 +259,91 @@ function SetupClangFormatStyleForGivenRepository()
             "Setup for code style check done by hook skipped."
         return 0
     fi
-    #Symlink clang-format options file to top directory so that it is found by clang-format
-    if [[ -e "${clangFormatStyleFileDestination}" ]]; then
-        if [[ -L "${clangFormatStyleFileDestination}" && "$(realpath ${clangFormatStyleFileDestination})" = "${clangFormatStyleFile}" ]]; then
-            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then               
-                PrintWarning \
-                    "File \"${clangFormatStyleFileDestination}\" already correctly symlinked!" \
-                    "Remove the symlink and run the script again if you want to copy the file!"
-            elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-                PrintInfo "File \"${clangFormatStyleFileDestination}\" already correctly symlinked!"
-            fi
-        else
-            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
-                PrintWarning "File \"${clangFormatStyleFileDestination}\" already existing, copy skipped!"
-            elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-                PrintWarning "File \"${clangFormatStyleFileDestination}\" already existing, symlink not created!"
-            fi
-        fi
-    else
-        if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
-            cp "${clangFormatStyleFile}" "${clangFormatStyleFileDestination}"
-            if [[  -f "${clangFormatStyleFileDestination}" ]]; then
-                PrintInfo "Clang style file copied. File \"${clangFormatStyleFileDestination}\" successfully created!"
-            else
-                PrintFatalAndExit "Copy of the clang style file failed. Unable to create \"${clangFormatStyleFileDestination}\" file!"
-            fi            
-        elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
-            PrintDebug "Symlinking file with clang-format options: \e[1mln -s -f \"${clangFormatStyleFile}\" \"${clangFormatStyleFileDestination}\"\e[22m"
-            ln -s -f "${clangFormatStyleFile}" "${clangFormatStyleFileDestination}"
-            if [[  -e "${clangFormatStyleFileDestination}" ]]; then
-                PrintInfo "Symbolic link for file \"${clangFormatStyleFileDestination}\" successfully created!"
-            else
-                PrintFatalAndExit "Symbolic link for file \"${clangFormatStyleFileDestination}\" could not be created!"
-            fi
-        fi
+    __static__SetupFileOrFolderCopyOrSymlink "${clangFormatStyleFile}" "${clangFormatStyleFileDestination}"
+    if [[ $? -ne 0 ]]; then
+        PrintFatalAndExit "Error occurred setting up clang-format style check! Setup aborted."
     fi
     if [[ ! -f "${repositoryTopLevelPath}/.gitignore" || $(grep -c '_clang-format' "${repositoryTopLevelPath}/.gitignore") -eq 0 ]]; then
         PrintWarning \
             "File \"_clang-format\" is not excluded from tracking in repository \"${repositoryTopLevelPath}\"." \
             "Consider adding it to the respective \".gitignore\" file."
     fi
+    PrintTrace "Exiting ${FUNCNAME}"
+}
+
+
+function SetupLicenceNoticeCheckForGivenRepository()
+{
+    PrintTrace "Entering ${FUNCNAME}"
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet repositoryTopLevelPath licenseNoticeFile
+    local licenceNoticeFileDestination
+    licenceNoticeFileDestination="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
+    __static__SetupFileOrFolderCopyOrSymlink "$(realpath ${licenseNoticeFile})" "${licenceNoticeFileDestination}"
+    if [[ $? -ne 0 ]]; then
+        PrintFatalAndExit "Error occurred setting up license notice check! Setup aborted."
+    fi
+    PrintTrace "Exiting ${FUNCNAME}"
+}
+
+function __static__SetupFileOrFolderCopyOrSymlink()
+{
+    PrintTrace "Entering ${FUNCNAME}"
+    CheckNumberOfArguments 2 $#
+    local sourceGlobalPath destinationGlobalPath objectType commandOptions
+    sourceGlobalPath="$1"
+    destinationGlobalPath="$2"
+    if [[ -d "${sourceGlobalPath}" ]]; then
+        objectType='Folder'
+        commandOptions='-r'
+    else
+        objectType='File'
+        commandOptions=''
+    fi
+    if [[ ${forceCopyOrSymlink} = 'TRUE' ]]; then
+        PrintDebug "rm -f ${commandOptions} \"${destinationGlobalPath}\""
+        rm -f ${commandOptions} "${destinationGlobalPath}"
+    fi
+    #Symlink clang-format options file to top directory so that it is found by clang-format
+    if [[ -e "${destinationGlobalPath}" ]]; then
+        if [[ -L "${destinationGlobalPath}" && "$(realpath ${destinationGlobalPath})" = "${sourceGlobalPath}" ]]; then
+            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then               
+                PrintWarning \
+                    "${objectType} \"${destinationGlobalPath}\" already correctly symlinked!" \
+                    "Run the script again with the \"--force\" option if you want to overwrite the ${objectType,}."
+            elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
+                PrintInfo "${objectType} \"${destinationGlobalPath}\" already correctly symlinked!"
+            fi
+        else
+            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
+                PrintWarning \
+                    "${objectType} \"${destinationGlobalPath}\" already existing, copy skipped!" \
+                    "Run the script again with the \"--force\" option if you want to overwrite the ${objectType,}."
+            elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
+                PrintWarning \
+                    "${objectType} \"${destinationGlobalPath}\" already existing, symlink not created!" \
+                    "Run the script again with the \"--force\" option if you want to overwrite the link."
+            fi
+        fi
+    else
+        if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
+            cp ${commandOptions} "${sourceGlobalPath}" "${destinationGlobalPath}"
+            if [[ ${objectType} = 'File' && -f "${destinationGlobalPath}" ]] || [[ ${objectType} = 'Folder' && -d "${destinationGlobalPath}" ]]; then
+                PrintInfo "\"$(basename "${sourceGlobalPath}")\" ${objectType,} copied. ${objectType} \"${destinationGlobalPath}\" successfully created!"
+            else
+                PrintError "Copy of the \"$(basename "${sourceGlobalPath}")\" ${objectType,} failed. Unable to create \"${destinationGlobalPath}\" ${objectType,}!"
+                return 1
+            fi            
+        elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
+            PrintDebug "Symlinking ${objectType,} with clang-format options: \e[1mln -s -f \"${sourceGlobalPath}\" \"${destinationGlobalPath}\"\e[22m"
+            ln -s -f "${sourceGlobalPath}" "${destinationGlobalPath}"
+            if [[  -e "${destinationGlobalPath}" ]]; then
+                PrintInfo "Symbolic link for ${objectType,} \"${destinationGlobalPath}\" successfully created!"
+            else
+                PrintError "Symbolic link for ${objectType,} \"${destinationGlobalPath}\" failed to be successfully created!"
+                return 1
+            fi
+        fi
+    fi
+    PrintTrace "Exiting ${FUNCNAME}"
 }

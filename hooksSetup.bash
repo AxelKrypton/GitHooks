@@ -23,24 +23,43 @@
 printf "\n"; trap 'printf "\n"' EXIT
 readonly thisRepositoryTopLevelPath="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 readonly hookImplementationFolderName='BashImplementation'
-for auxFile in "${thisRepositoryTopLevelPath}/${hookImplementationFolderName}/"*.bash; do
-    source "${auxFile}" || exit 1
-done
+readonly auxiliaryBashCodeTopLevelPath="${thisRepositoryTopLevelPath}"
+source "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/auxiliaryFunctions.bash"
+# Global variable for this hook are sourced in the file just sourced!
 
-# Variables for hooks functionalities
+# Variables to tune setup
 repositoryTopLevelPath=''
 copyFilesToRepository='FALSE'
 symlinkFilesToRepository='FALSE'
+forceCopyOrSymlink='FALSE'
+setupCodeStyleCheck='FALSE'
+repositoryLanguage=''
 clangFormatStyleFile="${thisRepositoryTopLevelPath}/_clang-format"
+setupLicenseNoticeCheck='FALSE'
+licenceNoticeFile=''
+extensionsOfFilesWhoseLicenseNoticeShouldBeChecked='.*'
+activateCopyrightCheck='FALSE'
+extensionsOfFilesWhoseCopyrightShouldBeChecked='.*'
+activateWhitespaceFixAndCheck='FALSE'
+activateCommitRestrictions='FALSE'
+
 ParseCommandLineOptions "$@"
 ValidateCommandLineOptions
 
 # Actual set-up
 readonly hookGitFolder="${repositoryTopLevelPath}/.git/hooks"
 readonly hooksSourceFolderGlobalpath="${thisRepositoryTopLevelPath}"
-CheckClangFormatAvailability
-
+readonly fileWithVariablesToSupportHooksExecution="${hookGitFolder}/hooksGlobalVariables.bash"
+CreateFileWithVariablesToSupportHooksExecution
 SetupHooksForGivenRepository
-SetupClangFormatStyleForGivenRepository
 
+if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
+    CheckClangFormatAvailability
+    SetupClangFormatStyleForGivenRepository
+elif [[ "${repositoryLanguage}" != '' ]]; then
+    PrintWarning "No code style setup available yet for the selected language."
+fi
 
+if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+    SetupLicenceNoticeCheckForGivenRepository
+fi
