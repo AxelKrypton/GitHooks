@@ -31,8 +31,36 @@ function ParseCommandLineOptions()
                 forceCopyOrSymlink='TRUE'
                 shift
                 ;;
-            --setupCodeStyleCheck )
-                setupCodeStyleCheck='TRUE'
+            --activateCommitFormatCheck )
+                activateCommitFormatCheck='TRUE'
+                shift
+                ;;
+            --subjectMaxLength )
+                if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1"
+                else
+                    commitHeadlineMaximumLength="$2"
+                fi
+                shift 2
+                ;;
+            --subjectMinLength )
+                if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1"
+                else
+                    commitHeadlineMinimumLength="$2"
+                fi
+                shift 2
+                ;;
+            --bodyLineMaxLength )
+                if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1"
+                else
+                    commitBodyLineMaximumLength="$2"
+                fi
+                shift 2
+                ;;
+            --activateCodeStyleCheck )
+                activateCodeStyleCheck='TRUE'
                 shift
                 ;;
             -l | --language )
@@ -41,19 +69,19 @@ function ParseCommandLineOptions()
                 ;;
             --clangFile )
                 if [[ ! -f "$2" ]]; then
-                    __static__AbortDueToInvalidOrMissingOptionValue "1" "File not found!"
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File not found!"
                 else
                     clangFormatStyleFile="$2"
                 fi
                 shift 2
                 ;;
-            --setupLicenseNoticeCheck )
-                setupLicenseNoticeCheck='TRUE'
+            --activateLicenseNoticeCheck )
+                activateLicenseNoticeCheck='TRUE'
                 shift
                 ;;
             --noticeFile )
                 if [[ ! -f "$2" ]]; then
-                    __static__AbortDueToInvalidOrMissingOptionValue "1" "File not found!"
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File not found!"
                 else
                     licenseNoticeFile="$2"
                 fi
@@ -67,8 +95,8 @@ function ParseCommandLineOptions()
                 activateWhitespaceFixAndCheck='TRUE'
                 shift
                 ;;
-            --activateCommitRestrictions )
-                activateCommitRestrictions='TRUE'
+            --activateBranchRestrictions )
+                activateBranchRestrictions='TRUE'
                 shift
                 ;;
             * )
@@ -94,11 +122,20 @@ function __static__PrintHelperAndExitIfNeeded()
                 '\e[38;5;11m  -s | --symlink              \e[0m  ->  Create symlinks to local files in given git repository' \
                 '\e[38;5;14m  -F | --force                \e[0m  ->  Overwrite previous file(s) or symlink(s) in repository' \
                 '' \
-                '\e[38;5;246m  --setupCodeStyleCheck       \e[0m  ->  At the moment only for "c" or "cpp" language' \
+                '\e[38;5;10mOptions for the \e[1mcommit-msg\e[22m hook fine-tuning:' \
+                '' \
+                '\e[38;5;246m  --activateCommitFormatCheck \e[0m  ->  commit-msg hook will check message mail-like format' \
+                "\e[38;5;14m       --subjectMaxLength    \e[0m   ->  Maximum length in characters of the first line of the commit message \e[94m[default: ${commitHeadlineMaximumLength}]" \
+                "\e[38;5;14m       --subjectMinLength    \e[0m   ->  Minimum length in characters of the first line of the commit message \e[94m[default: ${commitHeadlineMinimumLength}]" \
+                "\e[38;5;14m       --bodyLineMaxLength   \e[0m   ->  Maximum length in characters of the body lines of the commit message \e[94m[default: ${commitBodyLineMaximumLength}]" \
+                '' \
+                '\e[38;5;10mOptions for the \e[1mpre-commit\e[22m hook fine-tuning:' \
+                '' \
+                '\e[38;5;246m  --activateCodeStyleCheck    \e[0m  ->  At the moment only for "c" or "cpp" language' \
                 '\e[38;5;14m  -l | --language             \e[0m  ->  Repository programming language' \
                 '\e[38;5;14m       --clangFile            \e[0m  ->  Style file for clang-format, if not specified use local one' \
                 '' \
-                '\e[38;5;246m  --setupLicenseNoticeCheck   \e[0m  ->  pre-commit hook will check license notice' \
+                '\e[38;5;246m  --activateLicenseNoticeCheck\e[0m  ->  pre-commit hook will check license notice' \
                 '\e[38;5;14m       --noticeFile           \e[0m  ->  License notice file for header check' \
                 "\e[38;5;14m       --extensionsLicense    \e[0m  ->  Extensions of files to be checked about license notice      \e[94m[default: ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}]" \
                 '' \
@@ -107,7 +144,7 @@ function __static__PrintHelperAndExitIfNeeded()
                 '' \
                 '\e[38;5;246m  --activateSpacesFixAndCheck \e[0m  ->  pre-commit hook will fix and check whitespaces in fully staged files' \
                 '' \
-                '\e[38;5;246m  --activateCommitRestrictions\e[0m  ->  pre-commit hook will forbit commits on "master" and "develop" branches' \
+                '\e[38;5;246m  --activateBranchRestrictions\e[0m  ->  pre-commit hook will forbit commits on "master" and "develop" branches' \
                 '\n     \e[34mNOTE: \e[38;5;246mGray options\e[34m should be used in combination with \e[38;5;14mfollowing cyan ones\e[34m!' \
                 'Options in \e[38;5;11myellow\e[34m are mutually exclusive but at least one must be given!\n'
             exit 0
@@ -165,10 +202,10 @@ function ValidateCommandLineOptions()
             fi
         fi
     fi    
-    if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" = '' ]]; then
+    if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" = '' ]]; then
         PrintFatalAndExit "You asked to set up code style check but no language was specified."
     fi
-    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+    if [[ ${activateLicenseNoticeCheck} = 'TRUE' ]]; then
         if [[ "${licenseNoticeFile}" = '' ]]; then
             PrintFatalAndExit "You asked to set up license notice check but no notice file was specified."
         fi
@@ -183,12 +220,20 @@ function CreateFileWithVariablesToSupportHooksExecution()
     CheckIfVariablesAreSet fileWithVariablesToSupportHooksExecution
     # fd 3 and 4 are used by BashLogger in its v0.1 -> use here fd 5
     exec 5>&1 1>"${fileWithVariablesToSupportHooksExecution}"
-    printf "readonly doCodeStyleCheckWithClangFormat='${setupCodeStyleCheck}'\n"
-    if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
+    printf '# commit-msg variables\n'
+    printf "readonly doCommitMessageFormatCheck='${activateCommitFormatCheck}'\n"
+    if [[ ${activateCommitFormatCheck} = 'TRUE' ]]; then
+        printf "readonly commitHeadlineMinimumLength=${commitHeadlineMinimumLength}\n"
+        printf "readonly commitHeadlineMaximumLength=${commitHeadlineMaximumLength}\n"
+        printf "readonly commitBodyLineMaximumLength=${commitBodyLineMaximumLength}\n"
+    fi
+    printf '# pre-commit variables\n'
+    printf "readonly doCodeStyleCheckWithClangFormat='${activateCodeStyleCheck}'\n"
+    if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
         printf "readonly extensionsOfFilesWhoseCodeStyleShouldBeCheckedWithClangFormat=( 'c' 'C' 'cpp' 'h' 'hpp' 'cl' )\n"
     fi
-    printf "readonly doLicenseNoticeCheck='${setupLicenseNoticeCheck}'\n"
-    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+    printf "readonly doLicenseNoticeCheck='${activateLicenseNoticeCheck}'\n"
+    if [[ ${activateLicenseNoticeCheck} = 'TRUE' ]]; then
         printf "readonly extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( '${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}' )\n"
     fi
     printf "readonly doCopyrightStatementCheck='${activateCopyrightCheck}'\n"
@@ -196,7 +241,7 @@ function CreateFileWithVariablesToSupportHooksExecution()
         printf "readonly extensionsOfFilesWhoseCopyrightShouldBeChecked=( '${extensionsOfFilesWhoseCopyrightShouldBeChecked}' )\n"
     fi
     printf "readonly doWhitespaceFixAndCheck='${activateWhitespaceFixAndCheck}'\n"
-    printf "readonly restrictCommitsOnSomeBranches='${activateCommitRestrictions}'\n"
+    printf "readonly restrictCommitsOnSomeBranches='${activateBranchRestrictions}'\n"
     exec 1>&5-
     PrintInfo "File \"${fileWithVariablesToSupportHooksExecution}\" successfully created!"
     PrintTrace "Exiting ${FUNCNAME}"

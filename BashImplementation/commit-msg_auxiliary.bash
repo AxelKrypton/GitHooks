@@ -76,20 +76,20 @@ function IsFirstLineNotStartingWithLetter()
     fi
 }
 
-function IsFirstLineTooShort()
+function IsFirstLineShorterThan()
 {
-    CheckNumberOfArguments 1 $#
-    if [[ $(cat "$1" | head -1 | grep -c '^.\{7\}') -gt 0 ]]; then
+    CheckNumberOfArguments 2 $#
+    if [[ $(head -n 1 "$2" | grep -c "^.\{$1\}") -gt 0 ]]; then
         return 1
     else
         return 0
     fi
 }
 
-function IsFirstLineTooLong()
+function IsFirstLineLongerThan()
 {
-    CheckNumberOfArguments 1 $#
-    if [[ $(cat "$1" | head -1 | grep -c '^..\{50\}') -gt 0 ]]; then
+    CheckNumberOfArguments 2 $#
+    if [[ $(head -n 1 "$2" | grep -c "^..\{$1\}") -gt 0 ]]; then
         return 0
     else
         return 1
@@ -109,10 +109,10 @@ function IsSecondLineNotEmpty()
     fi
 }
 
-function IsAnyOfTheLinesAfterTheSecondTooLong()
+function IsAnyOfTheLinesAfterTheSecondLongerThan()
 {
-    CheckNumberOfArguments 1 $#
-    if [[ $(cat "$1" | tail -n +2 | grep -c '^..\{72\}') -gt 0 ]]; then
+    CheckNumberOfArguments 2 $#
+    if [[ $(tail -n +2 "$2" | grep -c "^..\{$1\}") -gt 0 ]]; then
         return 0
     else
         return 1

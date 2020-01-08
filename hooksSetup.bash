@@ -32,16 +32,20 @@ repositoryTopLevelPath=''
 copyFilesToRepository='FALSE'
 symlinkFilesToRepository='FALSE'
 forceCopyOrSymlink='FALSE'
-setupCodeStyleCheck='FALSE'
+activateCodeStyleCheck='FALSE'
 repositoryLanguage=''
 clangFormatStyleFile="${thisRepositoryTopLevelPath}/_clang-format"
-setupLicenseNoticeCheck='FALSE'
+activateLicenseNoticeCheck='FALSE'
 licenceNoticeFile=''
 extensionsOfFilesWhoseLicenseNoticeShouldBeChecked='.*'
 activateCopyrightCheck='FALSE'
 extensionsOfFilesWhoseCopyrightShouldBeChecked='.*'
 activateWhitespaceFixAndCheck='FALSE'
-activateCommitRestrictions='FALSE'
+activateBranchRestrictions='FALSE'
+activateCommitFormatCheck='FALSE'
+commitHeadlineMinimumLength=8
+commitHeadlineMaximumLength=60
+commitBodyLineMaximumLength=72
 
 ParseCommandLineOptions "$@"
 ValidateCommandLineOptions
@@ -53,7 +57,7 @@ readonly fileWithVariablesToSupportHooksExecution="${hookGitFolder}/hooksGlobalV
 CreateFileWithVariablesToSupportHooksExecution
 SetupHooksForGivenRepository
 
-if [[ ${setupCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
+if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
     CheckClangFormatAvailability
     SetupClangFormatStyleForGivenRepository
 elif [[ "${repositoryLanguage}" != '' ]]; then

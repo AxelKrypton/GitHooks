@@ -74,16 +74,18 @@ readonly commitMessageFile="${repositoryTopLevelPath}/.git/COMMIT_MSG"
 sed -n -e '/^#/d' -e '/^diff --git/q' -e 'p;d' "$1" > "${commitMessageFile}"
 
 # Check format
-if IsFirstLineNotStartingWithLetter "${commitMessageFile}"; then
-    AbortCommit "The first line must start with a letter!" GiveAdviceToResumeCommit
-elif IsFirstLineTooShort "${commitMessageFile}"; then
-    AbortCommit "The first line of your commit must be at least 8 chars long!" GiveAdviceToResumeCommit
-elif IsFirstLineTooLong "${commitMessageFile}"; then
-    AbortCommit "The first line of your commit exceeds the 50-char limit!" GiveAdviceToResumeCommit
-elif IsSecondLineNotEmpty "${commitMessageFile}"; then
-    AbortCommit "The second line of your commit must be empty!" GiveAdviceToResumeCommit
-elif IsAnyOfTheLinesAfterTheSecondTooLong "${commitMessageFile}"; then
-    AbortCommit "All the lines of your commit after the second must be shorter than 72 chars!" GiveAdviceToResumeCommit
+if [[ ${doCommitMessageFormatCheck} = 'TRUE' ]]; then
+    if IsFirstLineNotStartingWithLetter "${commitMessageFile}"; then
+        AbortCommit "The first line must start with a letter!" GiveAdviceToResumeCommit
+    elif IsFirstLineShorterThan "${commitHeadlineMinimumLength}" "${commitMessageFile}"; then
+        AbortCommit "The first line of your commit must be at least ${commitHeadlineMinimumLength} chars long!" GiveAdviceToResumeCommit
+    elif IsFirstLineLongerThan "${commitHeadlineMaximumLength}" "${commitMessageFile}"; then
+        AbortCommit "The first line of your commit exceeds the \"${commitHeadlineMaximumLength}\"-char limit!" GiveAdviceToResumeCommit
+    elif IsSecondLineNotEmpty "${commitMessageFile}"; then
+        AbortCommit "The second line of your commit must be empty!" GiveAdviceToResumeCommit
+    elif IsAnyOfTheLinesAfterTheSecondLongerThan "${commitBodyLineMaximumLength}" "${commitMessageFile}"; then
+        AbortCommit "All the lines of your commit after the second must be shorter than ${commitBodyLineMaximumLength} chars!" GiveAdviceToResumeCommit
+    fi
 fi
 
 # Remove commit file if not needed
