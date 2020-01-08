@@ -51,7 +51,7 @@
 #Preliminary setup and source of bash functions
 printf "\n"; trap 'printf "\n"' EXIT
 readonly repositoryTopLevelPath="$(git rev-parse --show-toplevel)"
-readonly auxiliaryBashCodeTopLevelPath="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+readonly auxiliaryBashCodeTopLevelPath="${repositoryTopLevelPath}/$(dirname "${BASH_SOURCE[0]}")"
 readonly hookImplementationFolderName='BashImplementation'
 source "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/auxiliaryFunctions.bash"
 # Global variable for this hook are sourced in the file just sourced!
