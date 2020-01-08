@@ -22,17 +22,18 @@
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     # Here we cannot use functions in this file that rely on code in other files
     fileThatSourced="$(basename "${BASH_SOURCE[1]}")" # Assume this is true
+    fileThatSourced="${fileThatSourced/%.bash}"
     filesToBeSourced=(
         "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/Logger.bash"
-        "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/${fileThatSourced/.bash/_auxiliary.bash}"
+        "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/${fileThatSourced}_auxiliary.bash"
     )
-    if [[ "${fileThatSourced}" != 'hooksSetup.bash' ]]; then
+    if [[ "${fileThatSourced}" != 'hooksSetup' ]]; then
         filesToBeSourced+=( "${auxiliaryBashCodeTopLevelPath}/hooksGlobalVariables.bash" )
     fi
     for auxFile in "${filesToBeSourced[@]}"; do
         source "${auxFile}"
         if [[ $? -ne 0 ]]; then
-            printf "\e[91m FATAL: Unable to source \"${auxFile}\".\e[0m\n"
+            printf "\e[1;91m FATAL:\e[22m Unable to source \"${auxFile}\".\e[0m\n"
             exit 1
         fi
     done
