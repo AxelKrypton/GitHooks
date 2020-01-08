@@ -360,7 +360,7 @@ function IsActualBranchAnyOfTheFollowing()
 function GiveAdviceAboutUserNameAndEmail()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'Use the commands' \
         '   \e[1mgit config --global user.name "Your Name"' \
         '   git config --global user.email "you@yourdomain.com"\e[22m' \
@@ -371,7 +371,7 @@ function GiveAdviceAboutUserNameAndEmail()
 function GiveAdviceAboutUserNameFormat()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'Please, configure your user.name using the command' \
         '   \e[1mgit config --global user.name "Your Name"\e[22m' \
         'where your name has to be formed by at least two words starting' \
@@ -382,7 +382,7 @@ function GiveAdviceAboutUserNameFormat()
 function GiveAdviceAboutUserEmailFormat()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'Please, configure your user.email using the command' \
         '   \e[1mgit config --global user.email "you@yourdomain.com"\e[22m' \
         'where your email has to be in a valid format as shown here above.\n' \
@@ -392,7 +392,7 @@ function GiveAdviceAboutUserEmailFormat()
 function GiveAdviceAboutCommitterNameFormat()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'The committer name must be composed by at least two words starting' \
         'with capital letter and separated by one space.\n'
 }
@@ -400,14 +400,14 @@ function GiveAdviceAboutCommitterNameFormat()
 function GiveAdviceAboutCommitterEmailFormat()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'The committer email must be a valid email address, for example "xxx@yourdomain.com".\n'
 }
 
 function GiveAdviceAboutNonAsciiCharacters()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'This can cause problems if you want to work with people on other platforms.' \
         'To be portable it is advisable to rename the file.' \
         'If you know what you are doing you can disable this check using:' \
@@ -418,7 +418,7 @@ function GiveAdviceAboutWhitespaceError()
 {
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet againstSHAToCompareWidth
-    PrintInfo \
+    PrintWarning -l -- \
         'Use the command' \
         "   \e[1mgit diff-index --check --cached ${againstSHAToCompareWidth}\e[22m\n" \
         'to have a look to the whitespace violation on staged files.\n'
@@ -427,7 +427,7 @@ function GiveAdviceAboutWhitespaceError()
 function GiveAdviceAboutClangFormat()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'Please install it before continuing' \
         '  http://releases.llvm.org/\n' \
         'Download the entire pre-built LLVM toolchain and extract the' \
@@ -438,7 +438,7 @@ function GiveAdviceAboutClangFormat()
 function GiveAdviceAboutClangFormatStyleFile()
 {
     CheckNumberOfArguments 0 $#
-    PrintInfo \
+    PrintWarning -l -- \
         'The style file for clang-format should be automatically set up' \
         'together with the hooks, if needed. Apparently something went' \
         'wrong or you might have by accident moved/renamed/deleted it.' \
@@ -450,7 +450,7 @@ function GiveAdviceAboutMissingLicenseNotice()
 {
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet licenseNoticeFile
-    PrintInfo \
+    PrintWarning -l -- \
         'A file with the expected license notice should be available as' \
         "   ${licenseNoticeFile}" \
         'Please, add one in order to use the automatic hook check.\n'
@@ -480,7 +480,7 @@ function PrintSuggestionToFixHeader()
 {
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet licenseNoticeFile
-    PrintInfo \
+    PrintWarning -l -- \
         'The correct license header can be found in the' \
         "   \e[1m${licenseNoticeFile}\e[22m" \
         'file. If only the copyright statement is missing add' \
@@ -499,7 +499,7 @@ function PrintReportOnFilesWithStyleErrors()
     for file in "$@"; do
         PrintError -l -- "     - ${file}"
     done
-    PrintInfo \
+    PrintWarning -l -- \
         "\nPlease fix before committing. Don't forget to run \"git add\" before trying to commit again." \
         ' If the whole file is to be committed, this should work:\n' \
         '' \

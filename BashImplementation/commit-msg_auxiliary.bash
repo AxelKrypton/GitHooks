@@ -20,9 +20,9 @@ function GiveAdviceToResumeCommit()
 {
     CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet commitMessageFile
-    PrintInfo \
+    PrintWarning -l -- \
         'To resume editing your commit message, run the command:' \
-        "   git commit -e -F ${commitMessageFile}" 11 #Variable commitMessageFile from invoking script
+        "   git commit -e -F ${commitMessageFile}\n" #Variable commitMessageFile from invoking script
 }
 
 function IsCommitMessageEmpty()
