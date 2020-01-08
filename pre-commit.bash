@@ -49,7 +49,7 @@
 #
 
 #Preliminary setup and source of bash functions
-printf "\n"; trap 'printf "\n"' EXIT
+printf "\n"; trap '[[ $? -ne 0 ]] && printf "\n" || PrintInfo "Hook $(basename "${BASH_SOURCE[0]}") successfully finished!"' EXIT
 readonly repositoryTopLevelPath="$(git rev-parse --show-toplevel)"
 readonly auxiliaryBashCodeTopLevelPath="${repositoryTopLevelPath}/$(dirname "${BASH_SOURCE[0]}")"
 readonly hookImplementationFolderName='BashImplementation'
