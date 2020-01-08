@@ -341,7 +341,6 @@ function AreThereFilesWithWhitespaceErrors()
 
 function IsActualBranchAnyOfTheFollowing()
 {
-    CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet actualBranch
     local branchRegex
     branchRegex="$(printf "%s|" "$@")"
