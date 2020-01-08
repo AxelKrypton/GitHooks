@@ -167,8 +167,9 @@ if [[ ${doWhitespaceFixAndCheck} = 'TRUE' ]]; then
 fi
 
 
-#Check branch: direct commit on 'develop' should not be done
-readonly actualBranch="$(git rev-parse --abbrev-ref HEAD)"
+#Check branch (get branch from git status since it works also for first commit)
+# NOTE: From git version 2.22 -> "git branch --show-current" might be used
+readonly actualBranch="$(git status | sed -n '1 s/^On branch \(.*\)/\1/p')"
 listOfBranchNamesWhereDirectCommitsAreForbidden=( 'master' 'develop' )
 if IsActualBranchAnyOfTheFollowing "${listOfBranchNamesWhereDirectCommitsAreForbidden[@]}"; then
     if [[ ${restrictCommitsOnSomeBranches} = 'TRUE' ]]; then
