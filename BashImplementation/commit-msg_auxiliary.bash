@@ -69,7 +69,7 @@ function IsFirstLineNotStartingWithLetter()
 {
     #Assume no trailing spaces, since removed
     CheckNumberOfArguments 1 $#
-    if [[ $(cat "$1" | head -1 | grep -c '^[[:alpha:]]') -gt 0 ]]; then
+    if [[ $(head -n 1 "$1" | grep -c '^[[:alpha:]]') -gt 0 ]]; then
         return 1
     else
         return 0
@@ -102,7 +102,7 @@ function IsSecondLineNotEmpty()
     if [[ $(wc -l < "$1") -lt 2 ]]; then
         return 1 #Needed otherwise head and tail below match first line
     fi
-    if [[ $(cat "$1" | head -2 | tail -1 | grep -c '^[[:blank:]]*$') -gt 0 ]]; then
+    if [[ $(head -n 2 "$1" | tail -1 | grep -c '^[[:blank:]]*$') -gt 0 ]]; then
         return 1
     else
         return 0
