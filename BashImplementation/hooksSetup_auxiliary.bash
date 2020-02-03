@@ -27,6 +27,11 @@ function ParseCommandLineOptions()
                 symlinkFilesToRepository='TRUE'
                 shift
                 ;;
+            -r | --remove )
+                mutuallyExclusiveSpecifiedOptions+=( "$1" )
+                removeFilesFromRepository='TRUE'
+                shift
+                ;;
             -F | --force )
                 forceCopyOrSymlink='TRUE'
                 shift
@@ -120,6 +125,7 @@ function __static__PrintHelperAndExitIfNeeded()
                 '\e[38;5;33m  -g | --git                  \e[0m  ->  Git repository top-level for which hooks should be set up   \e[94m[MANDATORY]' \
                 '\e[38;5;11m  -c | --copy                 \e[0m  ->  Copy files to given git repository \e[94m[recomended for multi-repository usage]' \
                 '\e[38;5;11m  -s | --symlink              \e[0m  ->  Create symlinks to local files in given git repository' \
+                '\e[38;5;11m  -r | --remove               \e[0m  ->  Clean up symlinked or copied files (this will remove them!!)' \
                 '\e[38;5;14m  -F | --force                \e[0m  ->  Overwrite previous file(s) or symlink(s) in repository' \
                 '' \
                 '\e[38;5;10mOptions for the \e[1mcommit-msg\e[22m hook fine-tuning:' \
@@ -295,9 +301,7 @@ function SetupClangFormatStyleForGivenRepository()
 {
     PrintTrace "Entering ${FUNCNAME}"
     CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet repositoryTopLevelPath clangFormatStyleFile
-    local clangFormatStyleFileDestination
-    clangFormatStyleFileDestination="${repositoryTopLevelPath}/_clang-format"
+    CheckIfVariablesAreSet repositoryTopLevelPath clangFormatStyleFile clangFormatStyleFileDestination
     if [[ ! -f "${clangFormatStyleFile}" ]]; then
         PrintError \
             "File \"${clangFormatStyleFile}\" has not been found." \
@@ -321,15 +325,67 @@ function SetupLicenceNoticeCheckForGivenRepository()
 {
     PrintTrace "Entering ${FUNCNAME}"
     CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet repositoryTopLevelPath licenseNoticeFile
-    local licenceNoticeFileDestination
-    licenceNoticeFileDestination="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
+    CheckIfVariablesAreSet repositoryTopLevelPath licenseNoticeFile licenceNoticeFileDestination
     __static__SetupFileOrFolderCopyOrSymlink "$(realpath ${licenseNoticeFile})" "${licenceNoticeFileDestination}"
     if [[ $? -ne 0 ]]; then
         PrintFatalAndExit "Error occurred setting up license notice check! Setup aborted."
     fi
     PrintTrace "Exiting ${FUNCNAME}"
 }
+
+function RemoveFilesOrSymlinksFromRepository()
+{
+    PrintTrace "Entering ${FUNCNAME}"
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet hookGitFolder thisRepositoryTopLevelPath hookImplementationFolderName
+    local listOfFilesOrFolders fileOrFolder hookBash hookGit
+    listOfFilesOrFolders=(
+        "${fileWithVariablesToSupportHooksExecution}"
+        "${hookGitFolder}/${hookImplementationFolderName}"
+        "${clangFormatStyleFileDestination}"
+        "${licenceNoticeFileDestination}"
+    )
+    for hookBash in "${thisRepositoryTopLevelPath}/"*.bash; do
+        if [[ ! -f "${hookBash}" || ! -x "${hookBash}" ]]; then
+            continue
+        fi
+        #We have to skip the main script file which is that sourcing this script => BASH_SOURCE[1]
+        if [[ "$(basename ${hookBash})" != "$(basename "${BASH_SOURCE[1]}")" ]]; then
+            hookGit="${hookGitFolder}/$(basename "${hookBash%.bash}")"
+            listOfFilesOrFolders+=( "${hookGit}" )
+        fi
+    done
+    # Actual cleaning
+    for fileOrFolder in "${listOfFilesOrFolders[@]}"; do
+        if [[ -f "${fileOrFolder}" ]]; then
+            rm "${fileOrFolder}"
+            if [[ $? -eq 0 ]]; then
+                PrintInfo "File \"${fileOrFolder}\" successfully removed!"
+            else
+                PrintError "Unable to remove file \"${fileOrFolder}\"!"
+            fi
+        elif [[ -d "${fileOrFolder}" ]]; then
+            rm -r "${fileOrFolder}"
+            if [[ $? -eq 0 ]]; then
+                PrintInfo "Directory \"${fileOrFolder}\" successfully removed!"
+            else
+                PrintError "Unable to remove directory \"${fileOrFolder}\"!"
+            fi
+        elif [[ -L "${fileOrFolder}" ]]; then
+            rm "${fileOrFolder}" # Use unlink here?!
+            if [[ $? -eq 0 ]]; then
+                PrintInfo "Symlink \"${fileOrFolder}\" successfully removed!"
+            else
+                PrintError "Unable to remove symlink \"${fileOrFolder}\"!"
+            fi
+        else
+            PrintWarning "\"${fileOrFolder}\" neither found as file/folder nor as symlink, no action taken on it."
+        fi
+    done
+    PrintInfo "\nWarning messages might refer to files that were not created at setup." "If this is the case, you can safely ignore them."
+    PrintTrace "Exiting ${FUNCNAME}"
+}
+
 
 function __static__SetupFileOrFolderCopyOrSymlink()
 {

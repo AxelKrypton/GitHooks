@@ -31,6 +31,7 @@ source "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/auxilia
 repositoryTopLevelPath=''
 copyFilesToRepository='FALSE'
 symlinkFilesToRepository='FALSE'
+removeFilesFromRepository='FALSE'
 forceCopyOrSymlink='FALSE'
 activateCodeStyleCheck='FALSE'
 repositoryLanguage=''
@@ -54,16 +55,23 @@ ValidateCommandLineOptions
 readonly hookGitFolder="${repositoryTopLevelPath}/.git/hooks"
 readonly hooksSourceFolderGlobalpath="${thisRepositoryTopLevelPath}"
 readonly fileWithVariablesToSupportHooksExecution="${hookGitFolder}/hooksGlobalVariables.bash"
-CreateFileWithVariablesToSupportHooksExecution
-SetupHooksForGivenRepository
+readonly clangFormatStyleFileDestination="${repositoryTopLevelPath}/$(basename "${clangFormatStyleFile}")"
+readonly licenceNoticeFileDestination="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
 
-if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
-    CheckClangFormatAvailability
-    SetupClangFormatStyleForGivenRepository
-elif [[ "${repositoryLanguage}" != '' ]]; then
-    PrintWarning "No code style setup available yet for the selected language."
-fi
+if [[ ${removeFilesFromRepository} = 'TRUE' ]]; then
+   RemoveFilesOrSymlinksFromRepository
+else
+    CreateFileWithVariablesToSupportHooksExecution
+    SetupHooksForGivenRepository
 
-if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
-    SetupLicenceNoticeCheckForGivenRepository
+    if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" =~ ^c(pp)?$ ]]; then
+        CheckClangFormatAvailability
+        SetupClangFormatStyleForGivenRepository
+    elif [[ "${repositoryLanguage}" != '' ]]; then
+        PrintWarning "No code style setup available yet for the selected language."
+    fi
+
+    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+        SetupLicenceNoticeCheckForGivenRepository
+    fi
 fi
