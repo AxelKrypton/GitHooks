@@ -10,6 +10,16 @@ Once cloned the repository on your system, you can run the main script as `./hoo
 Few options to tell the script the repository for which hooks should be set up as well as how (i.e. copying or symlinking) must be specified.
 The following hooks will be then prepared for future use.
 
+### Copy or symlink?
+
+The automatic setup offers two possibilities:
+
+1. Copy hooks and auxiliary files from this repository to the `.git` directory of the chosen repository;
+1. Create symbolic links to files of the clone of this repository to the `.git` directory of the chosen repository.
+
+There are pros and cons and it is up to you to choose what better suites your usage.
+If you simply want to give it a try and keeping hooks up to date to newer versions is not an immediate priority, then just go for the copy.
+
 ### The `pre-commit` hook
 
 > This hook is invoked by `git commit`, and can be bypassed with the `--no-verify` option. It takes no parameters, and is invoked before obtaining the proposed commit log message and making a commit.
