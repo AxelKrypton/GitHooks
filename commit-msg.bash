@@ -22,17 +22,20 @@
 # Hook script to check the commit message.
 #
 # ENFORCED POLICY:
-#  1) The first line of the commit must be at maximum 60 chars.
-#     This is the hard limit for GitHub at which a commit message is hidden.
-#     See https://chris.beams.io/posts/git-commit/ for more infortmation.
-#  2) The first line of the commit must have at least 8 chars.
-#  3) The first line must begin with a character
+#  1) Trailing spaces at beginning of first three lines are removed
+#  2) Trailing spaces at the end of all lines are removed
+#  3) An endline at the end of the message is added if missing
 #  4) A small letter at the beginning of the first line is capitalised
 #  5) Any character among ".?!" at the end of the first line is removed
 #     in a repetitive way (e.g. "commit..!!!" -> "commit")
-#  6) The second line must be empty
-#  7) Any following line after the second must be 72 chars at maximum
-#  8) Trailing spaces at begin and end of the first two lines are removed
+#  6) Optionally:
+#      a) The first line of the commit must be at maximum 60 chars.
+#         This is the hard limit for GitHub at which a commit message is hidden.
+#         See https://chris.beams.io/posts/git-commit/ for more infortmation.
+#      b) The first line of the commit must have at least 8 chars.
+#      c) The second line must be empty
+#      d) Any following line after the second must be 72 chars at maximum
+#      e) The first line must begin with a character
 #
 # This script is called by "git commit" with one argument, the name of 
 # the file that has the commit message. The hook should exit with non-zero
