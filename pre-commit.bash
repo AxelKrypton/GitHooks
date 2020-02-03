@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  Copyright (c) 2019 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
+#  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
 #  This file is part of GitHooks.
 #
