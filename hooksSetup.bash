@@ -71,7 +71,7 @@ else
         PrintWarning "No code style setup available yet for the selected language."
     fi
 
-    if [[ ${setupLicenseNoticeCheck} = 'TRUE' ]]; then
+    if [[ ${activateLicenseNoticeCheck} = 'TRUE' ]]; then
         SetupLicenceNoticeCheckForGivenRepository
     fi
 fi
