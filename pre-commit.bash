@@ -100,10 +100,11 @@ if DoAddedFilenamesContainEndlines; then
 fi
 # NOTE: From this point on assume no spaces and no newlines in filenames!
 
+# Lists of files needed in different parts of following code
+readonly listOfStagedFiles=( $(GetListOfStagedFiles) )
+readonly listOfFullyStagedFiles=( $(GetListOfFullyStagedFiles) )
 
 if [[ ${doCodeStyleCheckWithClangFormat} = 'TRUE' ]]; then
-    # Get list of staged files which have to be checked with respect to CODE STYLE
-    readonly listOfStagedFiles=( $(GetListOfStagedFiles) )
     readonly clangFormatParameters="-style=file"
     if IsClangFormatNotAvailable; then
         AbortCommit "The program \"clang-format\" was not found!" GiveAdviceAboutClangFormat
@@ -158,7 +159,6 @@ fi
 if [[ ${doWhitespaceFixAndCheck} = 'TRUE' ]]; then
     # Work on tab/spaces in files (only those fully stages, since after modification we have to
     # add them and if done on partially staged they would be then fully staged against user willing!
-    readonly fullyStagedFiles=( $(GetListOfFullyStagedFiles) )
     FixWhitespaceOnFullyStagedFilesIfNeeded
     #If there are still whitespace errors, print the offending file names and fail
     if AreThereFilesWithWhitespaceErrors; then

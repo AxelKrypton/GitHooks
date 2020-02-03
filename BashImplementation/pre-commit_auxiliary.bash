@@ -246,14 +246,14 @@ function GetListOfStagedFiles()
 function GetListOfFullyStagedFiles()
 {
     CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet stagedFiles
+    CheckIfVariablesAreSet listOfStagedFiles
     local partiallyStagedFiles stagedAndPartiallyStagedFiles fullyStagedFiles
     # Adapted from https://gist.github.com/larsxschneider/3957621
     partiallyStagedFiles=( $(git status --porcelain --untracked-files=no | # Find all staged files
                                  egrep -i '^(A|M)M '                     | # Filter only partially staged files
                                  sed -e 's/^[AM]M[[:space:]]*//'         | # Remove leading git info
                                  sort | uniq) )                            # Remove duplicates
-    stagedAndPartiallyStagedFiles=( "${stagedFiles[@]}" "${partiallyStagedFiles[@]}" )
+    stagedAndPartiallyStagedFiles=( "${listOfStagedFiles[@]}" "${partiallyStagedFiles[@]}" )
     # Remove all files that are staged AND partially staged -> we get only the fully staged files
     fullyStagedFiles=( $(tr ' ' '\n' <<< "${stagedAndPartiallyStagedFiles[@]}" | sort | uniq -u) )
     #The following line assumes no endline in filenames
@@ -263,10 +263,11 @@ function GetListOfFullyStagedFiles()
 function FixWhitespaceOnFullyStagedFilesIfNeeded()
 {
     CheckNumberOfArguments 0 $#
-    if [ ${#fullyStagedFiles[@]} -ne 0 ]; then
+    CheckIfVariablesAreSet listOfFullyStagedFiles
+    if [ ${#listOfFullyStagedFiles[@]} -ne 0 ]; then
         local file
         PrintInfo '\nFixing trailing whitespaces and newline at EOF in fully staged files:'
-        for file in "${fullyStagedFiles[@]}"; do
+        for file in "${listOfFullyStagedFiles[@]}"; do
             PrintWarning -l -- "   - ${file}"
             # Strip trailing whitespace
             sed -i 's/[[:space:]]*$//' "$file"
@@ -291,8 +292,8 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
     numberOfExpectedTextLines=$(sed '/^$/d' "${licenseNoticeFile}" | wc -l)
-    returnCode=0
-    for file in "${stagedFiles[@]}"; do
+    returnCode=1
+    for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
             continue
         fi
@@ -301,7 +302,7 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
         numberOfMatchingLines=$(grep -o -f "${licenseNoticeFile}" "${file}" | sort | uniq | wc -l)
         if [[ ${numberOfMatchingLines} -ne ${numberOfExpectedTextLines} ]]; then
             filesWithWrongOrMissingLicenseNotice+=( "${file}" )
-            returnCode=1
+            returnCode=0
         fi
     done
     return ${returnCode}
@@ -314,15 +315,15 @@ function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
     expectedCopyright='Copyright \(c\) ([2][0-9]{3}[,-]?[ ]?)*'"$(date +%Y) ${userName}"
-    returnCode=0
+    returnCode=1
     PrintInfo '\nChecking copyright statement of staged files... \e[s'
-    for file in "${stagedFiles[@]}"; do
+    for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
             continue
         fi
         if [[ $(grep -cE "${expectedCopyright}" "${file}") -eq 0 ]]; then
             filesWithIncompleteCopyright+=( "${file}" )
-            returnCode=1
+            returnCode=0
         fi
     done
     return ${returnCode}
@@ -364,7 +365,7 @@ function GiveAdviceAboutUserNameAndEmail()
         '   \e[1mgit config --global user.name "Your Name"' \
         '   git config --global user.email "you@yourdomain.com"\e[22m' \
         'to introduce yourself to Git before committing.\n' \
-        'Omit the "--global" option to set your infortmation only in the local repository.' 
+        'Omit the "--global" option to set your infortmation only in the local repository.'
 }
 
 function GiveAdviceAboutUserNameFormat()
