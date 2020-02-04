@@ -48,8 +48,14 @@
 #       if their name appears only on their definition line!
 #
 
-#Preliminary setup and source of bash functions
-printf "\n"; trap '[[ $? -ne 0 ]] && printf "\n" || PrintInfo "Hook $(basename "${BASH_SOURCE[0]}") successfully finished!"' EXIT
+
+# Setup traps and allow exit on error also from subshells -> set -E
+printf "\n"
+readonly userFatalExitCode=113 # This is the error code variable name used by the Logger
+set -E; trap '[[ $? -eq ${userFatalExitCode} ]] && exit ${userFatalExitCode}' ERR # https://unix.stackexchange.com/a/48550
+trap '[[ $? -ne 0 ]] && printf "\n" || PrintInfo "Hook $(basename "${BASH_SOURCE[0]}") successfully finished!"' EXIT
+
+# Source of bash functions
 readonly repositoryTopLevelPath="$(git rev-parse --show-toplevel)"
 readonly auxiliaryBashCodeTopLevelPath="${repositoryTopLevelPath}/$(dirname "${BASH_SOURCE[0]}")"
 readonly hookImplementationFolderName='BashImplementation'
@@ -101,8 +107,13 @@ fi
 # NOTE: From this point on assume no spaces and no newlines in filenames!
 
 # Lists of files needed in different parts of following code
-readonly listOfStagedFiles=( $(GetListOfStagedFiles) )
-readonly listOfFullyStagedFiles=( $(GetListOfFullyStagedFiles) )
+# NOTE: readonly must be done after the assignment to prevent it
+#       from forbid the call of the trap ERR in case the command
+#       in $() exits. If done together, bash would not execute the trap
+#       on ERR because "the failed command is any command in a pipeline
+#       but the last" (in this case readonly would not fail).
+listOfStagedFiles=( $(GetListOfStagedFiles) ); readonly listOfStagedFiles
+listOfFullyStagedFiles=( $(GetListOfFullyStagedFiles) ); readonly listOfFullyStagedFiles
 
 if [[ ${doCodeStyleCheckWithClangFormat} = 'TRUE' ]]; then
     readonly clangFormatParameters="-style=file"
