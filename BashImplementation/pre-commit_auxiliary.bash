@@ -266,7 +266,7 @@ function FixWhitespaceOnFullyStagedFilesIfNeeded()
     CheckIfVariablesAreSet listOfFullyStagedFiles
     if [ ${#listOfFullyStagedFiles[@]} -ne 0 ]; then
         local file
-        PrintInfo '\nFixing trailing whitespaces and newline at EOF in fully staged files:'
+        PrintInfo 'Fixing trailing whitespaces and newline at EOF in fully staged files:'
         for file in "${listOfFullyStagedFiles[@]}"; do
             PrintWarning -l -- "   - ${file}"
             # Strip trailing whitespace
@@ -317,7 +317,6 @@ function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
     extensionRegex="[.](${extensionRegex%?})\$"
     expectedCopyright='Copyright \(c\) ([2][0-9]{3}[,-]?[ ]?)*'"$(date +%Y) ${userName}"
     returnCode=1
-    PrintInfo '\nChecking copyright statement of staged files... \e[s'
     for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
             continue

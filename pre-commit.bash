@@ -127,7 +127,8 @@ if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
     else
         fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
         filesWithWrongOrMissingLicenseNotice=()
-        PrintInfo '\nChecking license notice of staged files... \e[s'
+        PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
+        PrintInfo 'Checking license notice of staged files... \e[s'
         if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
             PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
             AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the license notice of the file(s)?"
@@ -144,6 +145,8 @@ fi
 if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
     fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
     filesWithIncompleteCopyright=()
+    PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
+    PrintInfo 'Checking copyright statement of staged files... \e[s'
     if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
         PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
         AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the copyright statement of the file(s)?"
