@@ -48,6 +48,9 @@
 #       if their name appears only on their definition line!
 #
 
+if git diff --cached --quiet ; then
+    exit 0 # If the commit is a pure amend, skip hook. https://stackoverflow.com/a/41986190
+fi
 
 # Setup traps and allow exit on error also from subshells -> set -E
 printf "\n"
