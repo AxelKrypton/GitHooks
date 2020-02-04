@@ -263,7 +263,6 @@ function GetListOfFullyStagedFiles()
 function FixWhitespaceOnFullyStagedFilesIfNeeded()
 {
     CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet listOfFullyStagedFiles
     if [ ${#listOfFullyStagedFiles[@]} -ne 0 ]; then
         local file
         PrintInfo 'Fixing trailing whitespaces and newline at EOF in fully staged files:'
