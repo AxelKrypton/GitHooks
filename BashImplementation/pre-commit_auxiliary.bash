@@ -111,6 +111,7 @@ function IsAuthorOrCommitterInformationNew()
 
 function SetRepositorySHA()
 {
+    CheckNumberOfArguments 0 $#
     if [ "$(git rev-parse --verify HEAD 2>/dev/null)" != '' ]; then
         readonly againstSHAToCompareWidth=HEAD
     else
@@ -177,6 +178,7 @@ function GetListOfStagedFilesEndingWith()
 
 function IsClangFormatNotAvailable()
 {
+    CheckNumberOfArguments 0 $#
     if ! builtin type -P clang-format >>/dev/null; then
         return 0
     else
@@ -310,7 +312,7 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
 
 function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
 {
-    CheckIfVariablesAreSet listOfStagedFiles userName licenseNoticeFile
+    CheckIfVariablesAreSet listOfStagedFiles userName
     local extensionRegex expectedCopyright file returnCode
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
@@ -344,7 +346,7 @@ function IsActualBranchAnyOfTheFollowing()
     CheckIfVariablesAreSet actualBranch
     local branchRegex
     branchRegex="$(printf "%s|" "$@")"
-    branchRegex="^(${extensionRegex%?})\$"
+    branchRegex="^(${branchRegex%?})\$"
     if [[ ${actualBranch} =~ ${branchRegex} ]]; then
         return 0
     else
