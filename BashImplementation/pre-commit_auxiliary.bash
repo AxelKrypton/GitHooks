@@ -283,8 +283,8 @@ function FixWhitespaceOnFullyStagedFilesIfNeeded()
             # Stage all changes
             git add "${file}"
         done
+        PrintWarning -l -- ''
     fi
-    PrintWarning -l -- ''
 }
 
 function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
