@@ -68,12 +68,14 @@ function UserSaidYes()
 {
     local userAnswer
     while read userAnswer; do
-        if [ "$userAnswer" = "Y" ]; then
+        if [[ "${userAnswer}" =~ ^[YN]$ ]]; then
             exec <&- #Closes stdin descriptor
-            return 0
-        elif [ "$userAnswer" = "N" ]; then
-            exec <&- #Closes stdin descriptor
-            return 1
+            printf '\n'
+            if [ "$userAnswer" = "Y" ]; then
+                return 0
+            elif [ "$userAnswer" = "N" ]; then
+                return 1
+            fi
         else
             PrintError -n -- "Please enter Y (yes) or N (no): "
         fi
