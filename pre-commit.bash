@@ -184,17 +184,19 @@ if [[ ${doWhitespaceFixAndCheck} = 'TRUE' ]]; then
 fi
 
 
-#Check branch (get branch from git status since it works also for first commit)
-# NOTE: From git version 2.22 -> "git branch --show-current" might be used
-readonly actualBranch="$(git status | sed -n '1 s/^On branch \(.*\)/\1/p')"
-listOfBranchNamesWhereDirectCommitsAreForbidden=( 'master' 'develop' )
-if IsActualBranchAnyOfTheFollowing "${listOfBranchNamesWhereDirectCommitsAreForbidden[@]}"; then
-    if [[ ${restrictCommitsOnSomeBranches} = 'TRUE' ]]; then
-        AbortCommit "To directly commit on \"${actualBranch}\" branch is forbidden!" GiveAdviceToResumeCommit
-    else
-        PrintWarning \
-            "You just made a commit on the \"${actualBranch}\" branch." \
-            "This is considered bad practice." \
-            "Please undo it if it was not intended!"
+actualBranch=''; SetRepositoryLocalBranchName
+if [[ $? -ne 0 ]]; then
+    PrintWarning "Unable to retrieve local branch name, not checking if committing on it is allowed."
+else
+    listOfBranchNamesWhereDirectCommitsAreForbidden=( 'master' 'develop' )
+    if IsActualBranchAnyOfTheFollowing "${listOfBranchNamesWhereDirectCommitsAreForbidden[@]}"; then
+        if [[ ${restrictCommitsOnSomeBranches} = 'TRUE' ]]; then
+            AbortCommit "To directly commit on \"${actualBranch}\" branch is forbidden!"
+        else
+            PrintWarning \
+                "You just made a commit on the \"${actualBranch}\" branch." \
+                "This is considered bad practice." \
+                "Please undo it if it was not intended!\n"
+        fi
     fi
 fi

@@ -341,6 +341,45 @@ function AreThereFilesWithWhitespaceErrors()
     fi
 }
 
+function SetRepositoryLocalBranchName()
+{
+    # Getting branch name is not trivial and it depends on many aspects, like
+    # if it is the first commit, where the user is in the tree, user customizations, etc.
+    #  => we try some and if none is working we just abort
+    # NOTE: From git version 2.22 -> "git branch --show-current" should be used
+    CheckNumberOfArguments 0 $#
+    local branchName counter exitCode
+    counter=0
+    exitCode=1
+    while [[ ${exitCode} -ne 0 ]]; do
+        case ${counter} in
+            0)
+                branchName="$(git branch --show-current 2>/dev/null)"
+                ;;
+            1)
+                branchName="$(git symbolic-ref --short HEAD 2>/dev/null)"
+                ;;
+            2)
+                branchName="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+                ;;
+            3)
+                branchName="$(git branch | sed -n '/\* /s///p' 2>/dev/null)"
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+        exitCode=$?
+        (( counter++ ))
+    done
+    if [[ "${branchName}" = '' ]]; then
+        return 1
+    else
+        readonly actualBranch="${branchName}"
+        return 0
+    fi
+}
+
 function IsActualBranchAnyOfTheFollowing()
 {
     CheckIfVariablesAreSet actualBranch
