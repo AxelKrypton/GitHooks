@@ -166,14 +166,32 @@ function DoAddedFilenamesContainEndlines()
     return 1
 }
 
-function GetListOfStagedFilesEndingWith()
+function GetListOfStagedFiles()
 {
+    CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet againstSHAToCompareWidth
-    local extensionRegex
-    extensionRegex="$(printf "%s|" "$@")"
-    extensionRegex="[.](${extensionRegex%?})\$"
     #The following line assumes no endline in filenames
-    printf '%s\n' "$(git diff-index --cached --name-only ${againstSHAToCompareWidth} --diff-filter=ACMR | grep -E "${extensionRegex}")"
+    printf '%s\n' "$(git diff-index --name-only --cached --diff-filter=AM ${againstSHAToCompareWidth} | sort | uniq)"
+}
+
+function GetListOfFullyStagedFiles()
+{
+    CheckNumberOfArguments 0 $#
+    local fullyStagedFiles
+    fullyStagedFiles=()
+    if [ ${#listOfStagedFiles[@]} -ne 0 ]; then
+        local partiallyStagedFiles stagedAndPartiallyStagedFiles
+        # Adapted from https://gist.github.com/larsxschneider/3957621
+        partiallyStagedFiles=( $(git status --porcelain --untracked-files=no | # Find all staged files
+                                     egrep -i '^(A|M)M '                     | # Filter only partially staged files
+                                     sed -e 's/^[AM]M[[:space:]]*//'         | # Remove leading git info
+                                     sort | uniq) )                            # Remove duplicates
+        stagedAndPartiallyStagedFiles=( "${listOfStagedFiles[@]}" "${partiallyStagedFiles[@]}" )
+        # Remove all files that are staged AND partially staged -> we get only the fully staged files
+        fullyStagedFiles=( $(tr ' ' '\n' <<< "${stagedAndPartiallyStagedFiles[@]}" | sort | uniq -u) )
+        #The following line assumes no endline in filenames
+    fi
+    printf '%s\n' "${fullyStagedFiles[@]}"
 }
 
 function IsClangFormatNotAvailable()
@@ -199,8 +217,7 @@ function IsClangFormatStyleFileNotAvailable()
 
 function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
 {
-    CheckIfVariablesAreSet listOfStagedFiles
-    local extensionRegex file newFile
+    local extensionRegex file newFile listOfStagedFiles
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
     PrintInfo "\nChecking style of code... \e[s"
@@ -237,63 +254,13 @@ function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
     fi
 }
 
-function GetListOfStagedFiles()
-{
-    CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet againstSHAToCompareWidth
-    #The following line assumes no endline in filenames
-    printf '%s\n' "$(git diff-index --name-only --cached --diff-filter=AM ${againstSHAToCompareWidth} | sort | uniq)"
-}
-
-function GetListOfFullyStagedFiles()
-{
-    CheckNumberOfArguments 0 $#
-    CheckIfVariablesAreSet listOfStagedFiles
-    local partiallyStagedFiles stagedAndPartiallyStagedFiles fullyStagedFiles
-    # Adapted from https://gist.github.com/larsxschneider/3957621
-    partiallyStagedFiles=( $(git status --porcelain --untracked-files=no | # Find all staged files
-                                 egrep -i '^(A|M)M '                     | # Filter only partially staged files
-                                 sed -e 's/^[AM]M[[:space:]]*//'         | # Remove leading git info
-                                 sort | uniq) )                            # Remove duplicates
-    stagedAndPartiallyStagedFiles=( "${listOfStagedFiles[@]}" "${partiallyStagedFiles[@]}" )
-    # Remove all files that are staged AND partially staged -> we get only the fully staged files
-    fullyStagedFiles=( $(tr ' ' '\n' <<< "${stagedAndPartiallyStagedFiles[@]}" | sort | uniq -u) )
-    #The following line assumes no endline in filenames
-    printf '%s\n' "${fullyStagedFiles[@]}"
-}
-
-function FixWhitespaceOnFullyStagedFilesIfNeeded()
-{
-    CheckNumberOfArguments 0 $#
-    if [ ${#listOfFullyStagedFiles[@]} -ne 0 ]; then
-        local file
-        PrintInfo 'Fixing trailing whitespaces and newline at EOF in fully staged files:'
-        for file in "${listOfFullyStagedFiles[@]}"; do
-            PrintWarning -l -- "   - ${file}"
-            # Strip trailing whitespace
-            sed -i 's/[[:space:]]*$//' "$file"
-            # Add newline to the end of the file
-            sed -i '$a\' "$file" # 'a\' appends the following text, which is nothing, in this case!
-            # The code "$a\" just says "match the last line of the file, and add nothing to it."
-            # But, implicitly, sed adds the newline to every line it processes if it is not already there.
-            # Remove empty (w/o spaces) lines at the end of the file (http://sed.sourceforge.net/sed1line.txt)
-            sed -i -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$file"
-            # Alternative in awk, but it needs a temporary file
-            # awk '/^$/{emptyLines=emptyLines"\n"; next} {printf "%s", emptyLines; emptyLines=""; print}'
-            # Stage all changes
-            git add "${file}"
-        done
-        PrintWarning -l -- ''
-    fi
-}
-
 function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
 {
-    CheckIfVariablesAreSet listOfStagedFiles userName licenseNoticeFile
+    CheckIfVariablesAreSet userName licenseNoticeFile listOfStagedFiles
     local extensionRegex numberOfExpectedTextLines file returnCode
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
-    numberOfExpectedTextLines=$(sed '/^$/d' "${licenseNoticeFile}" | wc -l)
+    numberOfExpectedTextLines=$(sed '/^$/d' "${licenseNoticeFile}" | sort | uniq | wc -l)
     returnCode=1
     for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
@@ -312,7 +279,7 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
 
 function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
 {
-    CheckIfVariablesAreSet listOfStagedFiles userName
+    CheckIfVariablesAreSet userName listOfStagedFiles
     local extensionRegex expectedCopyright file returnCode
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
@@ -328,6 +295,30 @@ function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
         fi
     done
     return ${returnCode}
+}
+
+function FixWhitespaceOnFullyStagedFilesIfNeeded()
+{
+    CheckNumberOfArguments 0 $#
+    CheckIfVariablesAreSet listOfFullyStagedFiles
+    local file
+    PrintInfo 'Fixing trailing whitespaces and newline at EOF in fully staged files:'
+    for file in "${listOfFullyStagedFiles[@]}"; do
+        PrintWarning -l -- "   - ${file}"
+        # Strip trailing whitespace
+        sed -i 's/[[:space:]]*$//' "$file"
+        # Add newline to the end of the file
+        sed -i '$a\' "$file" # 'a\' appends the following text, which is nothing, in this case!
+        # The code "$a\" just says "match the last line of the file, and add nothing to it."
+        # But, implicitly, sed adds the newline to every line it processes if it is not already there.
+        # Remove empty (w/o spaces) lines at the end of the file (http://sed.sourceforge.net/sed1line.txt)
+        sed -i -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$file"
+        # Alternative in awk, but it needs a temporary file
+        # awk '/^$/{emptyLines=emptyLines"\n"; next} {printf "%s", emptyLines; emptyLines=""; print}'
+        # Stage all changes
+        git add "${file}"
+    done
+    PrintWarning -l -- ''
 }
 
 function AreThereFilesWithWhitespaceErrors()

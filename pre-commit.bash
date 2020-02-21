@@ -119,35 +119,58 @@ listOfStagedFiles=( $(GetListOfStagedFiles) ); readonly listOfStagedFiles
 listOfFullyStagedFiles=( $(GetListOfFullyStagedFiles) ); readonly listOfFullyStagedFiles
 
 if [[ ${doCodeStyleCheckWithClangFormat} = 'TRUE' ]]; then
-    readonly clangFormatParameters="-style=file"
-    if IsClangFormatNotAvailable; then
-        AbortCommit "The program \"clang-format\" was not found!" GiveAdviceAboutClangFormat
-    fi
-    if IsClangFormatStyleFileNotAvailable; then
-        AbortCommit "The style file \"_clang-format\" was not found at the top-level of the repository!" GiveAdviceAboutClangFormatStyleFile
-    fi
-    filesWithCodeStyleErrors=(); fileExtensionsForCodeStyleCheck=( "${extensionsOfFilesWhoseCodeStyleShouldBeCheckedWithClangFormat[@]}" )
-    if DoesCodeStyleCheckFailOnAnyStagedFileEndingWith "${fileExtensionsForCodeStyleCheck[@]}"; then
-        AbortCommit "Code style error found!" PrintReportOnFilesWithStyleErrors "${filesWithCodeStyleErrors[@]}"
+    if [ ${#listOfStagedFiles[@]} -ne 0 ]; then
+        readonly clangFormatParameters="-style=file"
+        if IsClangFormatNotAvailable; then
+            AbortCommit "The program \"clang-format\" was not found!" GiveAdviceAboutClangFormat
+        fi
+        if IsClangFormatStyleFileNotAvailable; then
+            AbortCommit "The style file \"_clang-format\" was not found at the top-level of the repository!" GiveAdviceAboutClangFormatStyleFile
+        fi
+        filesWithCodeStyleErrors=(); fileExtensionsForCodeStyleCheck=( "${extensionsOfFilesWhoseCodeStyleShouldBeCheckedWithClangFormat[@]}" )
+        if DoesCodeStyleCheckFailOnAnyStagedFileEndingWith "${fileExtensionsForCodeStyleCheck[@]}"; then
+            AbortCommit "Code style error found!" PrintReportOnFilesWithStyleErrors "${filesWithCodeStyleErrors[@]}"
+        fi
     fi
 fi
 
 
 if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
-    readonly licenseNoticeFile="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
-    if [[ ! -f "${licenseNoticeFile}" ]]; then
-        PrintError "File \"${licenseNoticeFile}\" not found!"
-        AbortCommit "Unable to locate the license notice file!"
-    else
-        fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
-        filesWithWrongOrMissingLicenseNotice=()
+    if [ ${#listOfStagedFiles[@]} -ne 0 ]; then
+        readonly licenseNoticeFile="${repositoryTopLevelPath}/.git/hooks/LicenseNotice.txt"
+        if [[ ! -f "${licenseNoticeFile}" ]]; then
+            PrintError "File \"${licenseNoticeFile}\" not found!"
+            AbortCommit "Unable to locate the license notice file!"
+        else
+            fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
+            filesWithWrongOrMissingLicenseNotice=()
+            PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
+            PrintInfo 'Checking license notice of staged files... \e[s'
+            if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
+                PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
+                AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the license notice of the file(s)?"
+                if UserSaidNo; then
+                    AbortCommit "Files with wrong or missing license notice found!" PrintSuggestionToFixHeader
+                fi
+            else
+                PrintInfo -l -- "\e[udone!\n"
+            fi
+        fi
+    fi
+fi
+
+
+if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
+    if [ ${#listOfStagedFiles[@]} -ne 0 ]; then
+        fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
+        filesWithIncompleteCopyright=()
         PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
-        PrintInfo 'Checking license notice of staged files... \e[s'
-        if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
-            PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
-            AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the license notice of the file(s)?"
+        PrintInfo 'Checking copyright statement of staged files... \e[s'
+        if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
+            PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
+            AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the copyright statement of the file(s)?"
             if UserSaidNo; then
-                AbortCommit "Files with wrong or missing license notice found!" PrintSuggestionToFixHeader
+                AbortCommit "Files with wrong or missing copyright statement found!" PrintSuggestionToFixHeader
             fi
         else
             PrintInfo -l -- "\e[udone!\n"
@@ -155,34 +178,17 @@ if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
     fi
 fi
 
-
-if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
-    fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
-    filesWithIncompleteCopyright=()
-    PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
-    PrintInfo 'Checking copyright statement of staged files... \e[s'
-    if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
-        PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
-        AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the copyright statement of the file(s)?"
-        if UserSaidNo; then
-            AbortCommit "Files with wrong or missing copyright statement found!" PrintSuggestionToFixHeader
-        fi
-    else
-        PrintInfo -l -- "\e[udone!\n"
-    fi
-fi
-
-
 if [[ ${doWhitespaceFixAndCheck} = 'TRUE' ]]; then
-    # Work on tab/spaces in files (only those fully stages, since after modification we have to
-    # add them and if done on partially staged they would be then fully staged against user willing!
-    FixWhitespaceOnFullyStagedFilesIfNeeded
-    #If there are still whitespace errors, print the offending file names and fail
-    if AreThereFilesWithWhitespaceErrors; then
-        AbortCommit "Whitespace errors present in staged files!" GiveAdviceAboutWhitespaceError
+    if [ ${#listOfFullyStagedFiles[@]} -ne 0 ]; then
+        # Work on tab/spaces in files (only those fully stages, since after modification we have to
+        # add them and if done on partially staged they would be then fully staged against user willing!
+        FixWhitespaceOnFullyStagedFilesIfNeeded
+        #If there are still whitespace errors, print the offending file names and fail
+        if AreThereFilesWithWhitespaceErrors; then
+            AbortCommit "Whitespace errors present in staged files!" GiveAdviceAboutWhitespaceError
+        fi
     fi
 fi
-
 
 actualBranch=''; SetRepositoryLocalBranchName
 if [[ $? -ne 0 ]]; then

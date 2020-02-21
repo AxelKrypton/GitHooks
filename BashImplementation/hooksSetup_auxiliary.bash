@@ -110,8 +110,32 @@ function ParseCommandLineOptions()
                 fi
                 shift 2
                 ;;
+            --extensionsLicense )
+                extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=()
+                while [[ ! "$2" =~ ^(-|$) ]]; do
+                    if [[ "$2" =~ ^[.].*$ ]]; then
+                        extensionsOfFilesWhoseLicenseNoticeShouldBeChecked+=( "$2" )
+                    else
+                        __static__AbortDueToInvalidOrMissingOptionValue "$1" "Each extension must start with '.' and '$2' does not."
+                    fi
+                    shift
+                done
+                shift
+                ;;
             --activateCopyrightCheck )
                 activateCopyrightCheck='TRUE'
+                shift
+                ;;
+            --extensionsCopyright )
+                extensionsOfFilesWhoseCopyrightShouldBeChecked=()
+                while [[ ! "$2" =~ ^(-|$) ]]; do
+                    if [[ "$2" =~ ^[.].*$ ]]; then
+                        extensionsOfFilesWhoseCopyrightShouldBeChecked+=( "$2" )
+                    else
+                        __static__AbortDueToInvalidOrMissingOptionValue "$1" "Each extension must start with '.' and '$2' does not."
+                    fi
+                    shift
+                done
                 shift
                 ;;
             --activateSpacesFixAndCheck )
@@ -161,10 +185,10 @@ function __static__PrintHelperAndExitIfNeeded()
                 '' \
                 '\e[38;5;246m  --activateLicenseNoticeCheck\e[0m  ->  pre-commit hook will check license notice' \
                 '\e[38;5;14m       --noticeFile           \e[0m  ->  License notice file for header check' \
-                "\e[38;5;14m       --extensionsLicense    \e[0m  ->  Extensions of files to be checked about license notice      \e[94m[default: ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}]" \
+                "\e[38;5;14m       --extensionsLicense    \e[0m  ->  Extension(s) of files to be checked about license notice      \e[94m[default: ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}]" \
                 '' \
                 '\e[38;5;246m  --activateCopyrightCheck    \e[0m  ->  pre-commit hook will check copyright statement' \
-                "\e[38;5;14m       --extensionsCopyright  \e[0m  ->  Extensions of files to be checked about copyright statement \e[94m[default: ${extensionsOfFilesWhoseCopyrightShouldBeChecked}]" \
+                "\e[38;5;14m       --extensionsCopyright  \e[0m  ->  Extension(s) of files to be checked about copyright statement \e[94m[default: ${extensionsOfFilesWhoseCopyrightShouldBeChecked}]" \
                 '' \
                 '\e[38;5;246m  --activateSpacesFixAndCheck \e[0m  ->  pre-commit hook will fix and check whitespaces in fully staged files' \
                 '' \
@@ -222,10 +246,10 @@ function ValidateCommandLineOptions()
             PrintFatalAndExit "Folder \"${repositoryTopLevelPath}\" seems not to be a git repository!"
         else
             if [[ "${dotGitDir}" != '.git' ]]; then
-                PrintFatalAndExit "Folder \"${repositoryTopLevelPath}\" seems not to be the \e[1mTOP-LEVEL\e[22m of a git repository!"                
+                PrintFatalAndExit "Folder \"${repositoryTopLevelPath}\" seems not to be the \e[1mTOP-LEVEL\e[22m of a git repository!"
             fi
         fi
-    fi    
+    fi
     if [[ ${activateCodeStyleCheck} = 'TRUE' && "${repositoryLanguage}" = '' ]]; then
         PrintFatalAndExit "You asked to set up code style check but no language was specified."
     fi
@@ -258,11 +282,11 @@ function CreateFileWithVariablesToSupportHooksExecution()
     fi
     printf "readonly doLicenseNoticeCheck='${activateLicenseNoticeCheck}'\n"
     if [[ ${activateLicenseNoticeCheck} = 'TRUE' ]]; then
-        printf "readonly extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( '${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked}' )\n"
+        printf "readonly extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[*]/#./} )\n"
     fi
     printf "readonly doCopyrightStatementCheck='${activateCopyrightCheck}'\n"
     if [[ ${activateCopyrightCheck} = 'TRUE' ]]; then
-        printf "readonly extensionsOfFilesWhoseCopyrightShouldBeChecked=( '${extensionsOfFilesWhoseCopyrightShouldBeChecked}' )\n"
+        printf "readonly extensionsOfFilesWhoseCopyrightShouldBeChecked=( ${extensionsOfFilesWhoseCopyrightShouldBeChecked[*]/#./} )\n"
     fi
     printf "readonly doWhitespaceFixAndCheck='${activateWhitespaceFixAndCheck}'\n"
     printf "readonly restrictCommitsOnSomeBranches='${activateBranchRestrictions}'\n"
@@ -426,7 +450,7 @@ function __static__SetupFileOrFolderCopyOrSymlink()
     #Symlink clang-format options file to top directory so that it is found by clang-format
     if [[ -e "${destinationGlobalPath}" ]]; then
         if [[ -L "${destinationGlobalPath}" && "$(realpath ${destinationGlobalPath})" = "${sourceGlobalPath}" ]]; then
-            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then               
+            if [[ ${copyFilesToRepository} = 'TRUE' ]]; then
                 PrintWarning \
                     "${objectType} \"${destinationGlobalPath}\" already correctly symlinked!" \
                     "Run the script again with the \"--force\" option if you want to overwrite the ${objectType,}."
@@ -452,7 +476,7 @@ function __static__SetupFileOrFolderCopyOrSymlink()
             else
                 PrintError "Copy of the \"$(basename "${sourceGlobalPath}")\" ${objectType,} failed. Unable to create \"${destinationGlobalPath}\" ${objectType,}!"
                 return 1
-            fi            
+            fi
         elif [[ ${symlinkFilesToRepository} = 'TRUE' ]]; then
             PrintDebug "Symlinking ${objectType,} with clang-format options: \e[1mln -s -f \"${sourceGlobalPath}\" \"${destinationGlobalPath}\"\e[22m"
             ln -s -f "${sourceGlobalPath}" "${destinationGlobalPath}"
