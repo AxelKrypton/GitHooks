@@ -350,6 +350,10 @@ function SetupClangFormatStyleForGivenRepository()
             "Setup for code style check done by hook skipped."
         return 0
     fi
+    if [[ "${clangFormatStyleFile}" -ef "${clangFormatStyleFileDestination}" ]]; then
+        PrintInfo 'clang-format file already in repository.'
+        return
+    fi
     __static__SetupFileOrFolderCopyOrSymlink "${clangFormatStyleFile}" "${clangFormatStyleFileDestination}"
     if [[ $? -ne 0 ]]; then
         PrintFatalAndExit "Error occurred setting up clang-format style check! Setup aborted."
