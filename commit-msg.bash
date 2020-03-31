@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
@@ -37,7 +37,7 @@
 #      d) Any following line after the second must be 72 chars at maximum
 #      e) The first line must begin with a character
 #
-# This script is called by "git commit" with one argument, the name of 
+# This script is called by "git commit" with one argument, the name of
 # the file that has the commit message. The hook should exit with non-zero
 # status after issuing an appropriate message if it wants to stop the
 # commit. The hook is allowed to edit the commit message file.

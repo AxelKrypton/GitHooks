@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
@@ -145,7 +145,7 @@ if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
             fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
             filesWithWrongOrMissingLicenseNotice=()
             PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
-            PrintInfo 'Checking license notice of staged files... \e[s'
+            PrintInfo "Checking license notice of staged files... $(tput sc)"
             if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
                 PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
                 AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the license notice of the file(s)?"
@@ -153,7 +153,7 @@ if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
                     AbortCommit "Files with wrong or missing license notice found!" PrintSuggestionToFixHeader
                 fi
             else
-                PrintInfo -l -- "\e[udone!\n"
+                PrintInfo -l -- "$(tput rc)done!\n"
             fi
         fi
     fi
@@ -165,7 +165,7 @@ if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
         fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
         filesWithIncompleteCopyright=()
         PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
-        PrintInfo 'Checking copyright statement of staged files... \e[s'
+        PrintInfo "Checking copyright statement of staged files... $(tput sc)"
         if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
             PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
             AskYesNoQuestionToUser PrintWarning "Would you like to continue the commit without fixing the copyright statement of the file(s)?"
@@ -173,7 +173,7 @@ if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
                 AbortCommit "Files with wrong or missing copyright statement found!" PrintSuggestionToFixHeader
             fi
         else
-            PrintInfo -l -- "\e[udone!\n"
+            PrintInfo -l -- "$(tput rc)done!\n"
         fi
     fi
 fi

@@ -109,3 +109,10 @@ function CheckNumberOfArguments() {
         PrintInternalAndExit "Function \"${FUNCNAME[1]}\" called with $2 argument(s) but $1 needed!"
     fi
 }
+
+if ! command -v realpath >/dev/null 2>&1; then
+    function realpath()
+    {
+        echo "$(cd "$(dirname "$1")" ; pwd -P)/$(basename "$1")"
+    }
+fi

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
@@ -21,7 +21,7 @@
 
 # Preliminary setup and source of bash functions
 printf "\n"; trap 'printf "\n"' EXIT
-readonly thisRepositoryTopLevelPath="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+readonly thisRepositoryTopLevelPath="$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd -P)"
 readonly hookImplementationFolderName='BashImplementation'
 readonly auxiliaryBashCodeTopLevelPath="${thisRepositoryTopLevelPath}"
 source "${auxiliaryBashCodeTopLevelPath}/${hookImplementationFolderName}/auxiliaryFunctions.bash"

@@ -217,10 +217,11 @@ function IsClangFormatStyleFileNotAvailable()
 
 function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
 {
-    local extensionRegex file newFile listOfStagedFiles
+    CheckIfVariablesAreSet listOfStagedFiles
+    local extensionRegex file newFile
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
-    PrintInfo "\nChecking style of code... \e[s"
+    PrintInfo "\nChecking style of code... $(tput sc)"
     for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then
             continue
@@ -247,7 +248,7 @@ function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
         rm "${newFile}"
     done
     if [ ${#filesWithCodeStyleErrors[@]} -eq 0 ]; then
-        PrintInfo -l -- "\e[udone!\n"
+        PrintInfo -l -- "$(tput rc)done!\n"
         return 1
     else
         return 0
@@ -268,7 +269,7 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
         fi
         # Note that here the "| sort | uniq" avoids counting multiple times lines of the
         # licenseNoticeFile which could be by accident repeated in third party code
-        numberOfMatchingLines=$(grep -o -f "${licenseNoticeFile}" "${file}" | sort | uniq | wc -l)
+        numberOfMatchingLines=$(grep -o -F -f "${licenseNoticeFile}" "${file}" | sort | uniq | wc -l)
         if [[ ${numberOfMatchingLines} -ne ${numberOfExpectedTextLines} ]]; then
             filesWithWrongOrMissingLicenseNotice+=( "${file}" )
             returnCode=0
@@ -523,7 +524,6 @@ function PrintSuggestionToFixHeader()
 
 function PrintReportOnFilesWithStyleErrors()
 {
-    CheckNumberOfArguments 0 $#
     CheckIfVariablesAreSet clangFormatParameters
     PrintError 'Here a list of the affected files:'
     local file
