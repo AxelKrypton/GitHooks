@@ -3,6 +3,7 @@
 This small collection of bash script is an attempt to have a git-repository-independent hooks setup mechanism to comfortably use over and over again the own implemented hooks.
 The basic idea is to have a general hooks implementation and a bash main script to set up them in any git repository with command line options to fine tune the setup.
 All provided hooks and setup have a highly informative output.
+**This repository has been developed for a Linux operating system** :penguin: (e.g. it relies on GNU sed and GNU grep) and it is not guaranteed to work elsewhere.
 
 ## Quick start and main features
 
@@ -49,14 +50,14 @@ The provided implementation has the following enforcements.
 * Trailing spaces at the end of all lines are removed
 * An endline at the end of the message is added if missing
 * A small letter at the beginning of the first line is capitalised
-* Any character among ".?!" at the end of the first line is removed in a repetitive way (e.g. "commit..!!!" -> "commit")                                                                                                                                                                                                                                                                                                                 
-* Optionally:                                                                                                                                                                                                                                                                                                                                                          
-  - The first line of the commit must be at maximum 60 chars.                                                                                                                                                                                                                                                                                                        
-    This is the hard limit for GitHub at which a commit message is hidden.                                                                                                                                                                                                                                                                                           
+* Any character among ".?!" at the end of the first line is removed in a repetitive way (e.g. "commit..!!!" -> "commit")
+* Optionally:
+  - The first line of the commit must be at maximum 60 chars.
+    This is the hard limit for GitHub at which a commit message is hidden.
     More [good practices](https://chris.beams.io/posts/git-commit/) are encouraged.
-  - The first line of the commit must have at least 8 chars.                                                                                                                                                                                                                                                                                                         
-  - The second line must be empty                                                                                                                                                                                                                                                                                                                                    
-  - Any following line after the second must be 72 chars at maximum                                                                                                                                                                                                                                                                                                  
+  - The first line of the commit must have at least 8 chars.
+  - The second line must be empty
+  - Any following line after the second must be 72 chars at maximum
   - The first line must begin with a character
 
 The minimum and maximum line lengths can be customized.
