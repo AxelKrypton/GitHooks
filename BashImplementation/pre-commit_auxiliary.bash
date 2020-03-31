@@ -221,6 +221,7 @@ function DoesCodeStyleCheckFailOnAnyStagedFileEndingWith()
     local extensionRegex file newFile
     extensionRegex="$(printf "%s|" "$@")"
     extensionRegex="[.](${extensionRegex%?})\$"
+    AvoidScrollDownTerminal 2
     PrintInfo "\nChecking style of code... $(tput sc)"
     for file in "${listOfStagedFiles[@]}"; do
         if [[ ! ${file} =~ ${extensionRegex} ]]; then

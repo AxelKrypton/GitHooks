@@ -110,6 +110,22 @@ function CheckNumberOfArguments() {
     fi
 }
 
+function AvoidScrollDownTerminal()
+{
+    CheckNumberOfArguments $# 1
+    if [[ ! $1 =~ [0-9]+ ]]; then
+        return
+    fi
+    local index number scrollDown scrollUp
+    number=$1
+    scrollUp="\033[${number}A"
+    scrollDown=''
+    for((index=0; index<number; index++)); do
+        scrollDown+='\n'
+    done
+    printf "${scrollDown}${scrollUp}" #https://unix.stackexchange.com/a/565602/370049
+}
+
 if ! command -v realpath >/dev/null 2>&1; then
     function realpath()
     {

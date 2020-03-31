@@ -92,7 +92,7 @@ function ParseCommandLineOptions()
                 ;;
             --clangFile )
                 if [[ ! -f "$2" ]]; then
-                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File not found!"
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File \"$2\" not found!"
                 else
                     clangFormatStyleFile="$2"
                 fi
@@ -104,7 +104,7 @@ function ParseCommandLineOptions()
                 ;;
             --noticeFile )
                 if [[ ! -f "$2" ]]; then
-                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File not found!"
+                    __static__AbortDueToInvalidOrMissingOptionValue "$1" "File \"$2\" not found!"
                 else
                     licenseNoticeFile="$2"
                 fi

@@ -144,7 +144,7 @@ if [[ ${doLicenseNoticeCheck} = 'TRUE' ]]; then
         else
             fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[@]}" )
             filesWithWrongOrMissingLicenseNotice=()
-            PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
+            AvoidScrollDownTerminal 2
             PrintInfo "Checking license notice of staged files... $(tput sc)"
             if DoesLicenseNoticeCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
                 PrintReportOnFilesWithWrongOrMissingLicenseNotice "${filesWithWrongOrMissingLicenseNotice[@]}"
@@ -164,7 +164,7 @@ if [[ ${doCopyrightStatementCheck} = 'TRUE' ]]; then
     if [ ${#listOfStagedFiles[@]} -ne 0 ]; then
         fileExtensionsForLicenseAndCopyrightCheck=( "${extensionsOfFilesWhoseCopyrightShouldBeChecked[@]}" )
         filesWithIncompleteCopyright=()
-        PrintInfo -l -- '\n\e[2A' # https://unix.stackexchange.com/a/565602/370049
+        AvoidScrollDownTerminal 2
         PrintInfo "Checking copyright statement of staged files... $(tput sc)"
         if DoesCopyrightStatementCheckFailOfStagedFilesEndingWith "${fileExtensionsForLicenseAndCopyrightCheck[@]}"; then
             PrintReportOnFilesWithMissingCopyright "${filesWithIncompleteCopyright[@]}"
