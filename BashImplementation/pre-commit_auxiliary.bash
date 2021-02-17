@@ -314,6 +314,10 @@ function FixWhitespaceOnFullyStagedFilesIfNeeded()
     local file
     PrintInfo 'Fixing trailing whitespaces and newline at EOF in fully staged files:'
     for file in "${listOfFullyStagedFiles[@]}"; do
+        # Exclude picture files
+        if [[ ${file} =~ [.](jpeg|jpg|jpe|jif|jfif|jfi|png|gif|webp|tiff|tif|psd|raw|arw|cr2|nrw|k25|bmp|dib|heif|heic|ind|indd|indt|jp2|j2k|jpf|jpx|jpm|mj2|svg|svgz|ai|eps|pdf)$ ]]; then
+            continue
+        fi
         PrintWarning -l -- "   - ${file}"
         # Strip trailing whitespace
         sed -i 's/[[:space:]]*$//' "$file"
