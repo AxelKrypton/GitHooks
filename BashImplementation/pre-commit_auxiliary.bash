@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
+#  Copyright (c) 2019-2021 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
 #  This file is part of GitHooks.
 #
@@ -260,8 +260,12 @@ function DoesLicenseNoticeCheckFailOfStagedFilesEndingWith()
 {
     CheckIfVariablesAreSet userName licenseNoticeFile listOfStagedFiles
     local extensionRegex numberOfExpectedTextLines file returnCode
-    extensionRegex="$(printf "%s|" "$@")"
-    extensionRegex="[.](${extensionRegex%?})\$"
+    if [[ $1 = '*' ]]; then
+        extensionRegex="[.].*\$"
+    else
+        extensionRegex="$(printf "%s|" "$@")"
+        extensionRegex="[.](${extensionRegex%?})\$"
+    fi
     numberOfExpectedTextLines=$(sed '/^$/d' "${licenseNoticeFile}" | sort | uniq | wc -l)
     returnCode=1
     for file in "${listOfStagedFiles[@]}"; do
@@ -283,8 +287,12 @@ function DoesCopyrightStatementCheckFailOfStagedFilesEndingWith()
 {
     CheckIfVariablesAreSet userName listOfStagedFiles
     local extensionRegex expectedCopyright file returnCode
-    extensionRegex="$(printf "%s|" "$@")"
-    extensionRegex="[.](${extensionRegex%?})\$"
+    if [[ $1 = '*' ]]; then
+        extensionRegex="[.].*\$"
+    else
+        extensionRegex="$(printf "%s|" "$@")"
+        extensionRegex="[.](${extensionRegex%?})\$"
+    fi
     expectedCopyright='Copyright \(c\) ([2][0-9]{3}[,-]?[ ]?)*'"$(date +%Y) ${userName}"
     returnCode=1
     for file in "${listOfStagedFiles[@]}"; do

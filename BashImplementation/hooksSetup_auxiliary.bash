@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2019-2020 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
+#  Copyright (c) 2019-2021 Alessandro Sciarra <sciarra@itp.uni-frankfurt.de>
 #
 #  This file is part of GitHooks.
 #
@@ -282,10 +282,12 @@ function CreateFileWithVariablesToSupportHooksExecution()
     fi
     printf "readonly doLicenseNoticeCheck='${activateLicenseNoticeCheck}'\n"
     if [[ ${activateLicenseNoticeCheck} = 'TRUE' ]]; then
+        extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[*]/'*'/"'*'"}  )
         printf "readonly extensionsOfFilesWhoseLicenseNoticeShouldBeChecked=( ${extensionsOfFilesWhoseLicenseNoticeShouldBeChecked[*]/#./} )\n"
     fi
     printf "readonly doCopyrightStatementCheck='${activateCopyrightCheck}'\n"
     if [[ ${activateCopyrightCheck} = 'TRUE' ]]; then
+        extensionsOfFilesWhoseCopyrightShouldBeChecked=( ${extensionsOfFilesWhoseCopyrightShouldBeChecked[*]/'*'/"'*'"}  )
         printf "readonly extensionsOfFilesWhoseCopyrightShouldBeChecked=( ${extensionsOfFilesWhoseCopyrightShouldBeChecked[*]/#./} )\n"
     fi
     printf "readonly doWhitespaceFixAndCheck='${activateWhitespaceFixAndCheck}'\n"
