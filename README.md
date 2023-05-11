@@ -4,6 +4,7 @@ This small collection of bash script is an attempt to have a git-repository-inde
 The basic idea is to have a general hooks implementation and a bash main script to set up them in any git repository with command line options to fine tune the setup.
 All provided hooks and setup have a highly informative output.
 **This repository has been developed for a Linux operating system** :penguin: (e.g. it relies on GNU sed and GNU grep) and it is not guaranteed to work elsewhere.
+On an Apple :apple: OS, it should still be possible to use the hooks, provided that [GNU grep](https://formulae.brew.sh/formula/grep#default) and [GNU sed](https://formulae.brew.sh/formula/gnu-sed#default) are installed.
 
 ## Quick start and main features
 
